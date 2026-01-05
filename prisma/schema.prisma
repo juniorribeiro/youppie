@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  password_hash String
+  created_at    DateTime @default(now())
+
+  quizzes       Quiz[]
+
+  @@map("users")
+}
+
+enum CaptureMode {
+  ANONYMOUS
+  BEFORE
+  AFTER
+}
+
+model Quiz {
+  id           String      @id @default(uuid())
+  user_id      String
+  slug         String      @unique
+  title        String
+  description  String?
+  language     String      @default("en")
+  capture_mode CaptureMode @default(ANONYMOUS)
+  is_published Boolean     @default(false)
+  auto_advance Boolean     @default(false)
+  created_at   DateTime    @default(now())
+
+  user         User         @relation(fields: [user_id], references: [id])
+  steps        Step[]
+  leads        Lead[]
+  sessions     Session[]
+  result_pages ResultPage[]
+
+  @@map("quizzes")
+  @@index([user_id])
+}
+
+enum StepType {
+  QUESTION
+  TEXT
+  CAPTURE
+  RESULT
+}
+
+model Step {
+  id          String   @id @default(uuid())
+  quiz_id     String
+  order       Int
+  type        StepType
+  title       String
+  description String?
+  image_url   String?
+  metadata    Json?
+
+  quiz        Quiz      @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+  question    Question?
+
+  @@map("steps")
+  @@index([quiz_id])
+}
+
+model Question {
+  id      String @id @default(uuid())
+  step_id String @unique
+  text    String
+
+  step    Step           @relation(fields: [step_id], references: [id], onDelete: Cascade)
+  options AnswerOption[]
+
+  @@map("questions")
+}
+
+model AnswerOption {
+  id          String @id @default(uuid())
+  question_id String
+  text        String
+  value       String
+
+  question    Question @relation(fields: [question_id], references: [id], onDelete: Cascade)
+
+  @@map("answer_options")
+  @@index([question_id])
+}
+
+model Lead {
+  id         String   @id @default(uuid())
+  quiz_id    String
+  name       String?
+  email      String
+  created_at DateTime @default(now())
+
+  quiz       Quiz      @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+  sessions   Session[]
+
+  @@map("leads")
+  @@index([quiz_id])
+}
+
+model Session {
+  id           String    @id @default(uuid())
+  quiz_id      String
+  lead_id      String?
+  answers      Json      @default("{}")
+  completed_at DateTime?
+
+  quiz         Quiz      @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+  lead         Lead?     @relation(fields: [lead_id], references: [id])
+
+  @@map("sessions")
+  @@index([quiz_id])
+  @@index([lead_id])
+}
+
+model ResultPage {
+  id                String @id @default(uuid())
+  quiz_id           String
+  headline_template String
+  body_template     String
+  cta_text          String
+  cta_url           String
+
+  quiz              Quiz   @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+
+  @@map("result_pages")
+  @@index([quiz_id])
+}

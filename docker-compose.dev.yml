@@ -1,0 +1,65 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: youppie_db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-youppie_builder}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+      target: dev
+    container_name: youppie_api
+    ports:
+      - "3003:3003"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-youppie_builder}?schema=public
+      - JWT_SECRET=${JWT_SECRET:-supersecretkey}
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+    depends_on:
+      - db
+    networks:
+      - app-network
+    command: sh -c "npx prisma generate && npx prisma db push --skip-generate && yarn workspace @repo/api start:dev"
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      target: dev
+    container_name: youppie_web
+    ports:
+      - "3002:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3003
+      # For server-side fetching via docker network
+      - API_URL_INTERNAL=http://api:3003
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
+    depends_on:
+      - api
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+
+
+networks:
+  app-network:
+    driver: bridge

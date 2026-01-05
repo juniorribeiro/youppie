@@ -1,0 +1,58 @@
+# ============================================
+# Configurações de Produção - Youppie
+# ============================================
+# Copie este arquivo para .env.prod e preencha com seus valores reais
+# cp env-example.prod .env.prod
+NODE_ENV=production
+
+# ============================================
+# Banco de Dados PostgreSQL
+# ============================================
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=SUA_SENHA_SEGURA_AQUI
+POSTGRES_DB=quiz_builder
+
+# ============================================
+# API - NestJS
+# ============================================
+# URL pública da API (usada para gerar URLs de imagens e links)
+# Exemplo: https://api.seudominio.com ou http://seu-ip:3003
+API_URL=https://api.seudominio.com
+
+# Porta da API (padrão: 3003)
+API_PORT=3003
+
+# Secret para JWT tokens (use um valor aleatório e seguro)
+# Gere com: openssl rand -base64 32
+JWT_SECRET=SEU_JWT_SECRET_SUPER_SEGURO_AQUI_GERE_UM_ALEATORIO
+
+# ============================================
+# Frontend - Next.js
+# ============================================
+# URL pública do frontend (usada pelo Next.js para chamadas da API)
+# Exemplo: https://seudominio.com ou http://seu-ip:3002
+NEXT_PUBLIC_API_URL=https://api.seudominio.com
+
+# Porta do frontend (padrão: 3002)
+WEB_PORT=3002
+
+# ============================================
+# Opcional: Configurações Adicionais
+# ============================================
+# Se você estiver usando um proxy reverso (nginx, traefik, etc.)
+# e quiser configurar CORS, descomente e ajuste:
+# CORS_ORIGIN=https://seudominio.com
+
+# Para logs mais detalhados em produção, descomente:
+# LOG_LEVEL=info
+
+# ============================================
+# Segurança
+# ============================================
+# IMPORTANTE: 
+# - NUNCA commite o arquivo .env.prod no git
+# - Use senhas fortes e únicas
+# - Rotacione o JWT_SECRET periodicamente
+# - Mantenha backups do banco de dados
+# - Configure SSL/TLS em produção
+

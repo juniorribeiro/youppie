@@ -1,0 +1,65 @@
+# ============================================
+# Configurações de Desenvolvimento - Youppie
+# ============================================
+# Copie este arquivo para .env.dev e ajuste conforme necessário
+# cp env-example.dev .env.dev
+# 
+# Nota: Este arquivo é opcional. O docker-compose.dev.yml já possui
+# valores padrão para desenvolvimento. Use este arquivo apenas se
+# quiser sobrescrever os valores padrão.
+NODE_ENV=development
+
+# ============================================
+# Banco de Dados PostgreSQL
+# ============================================
+# Credenciais do banco de dados para desenvolvimento
+# Valores padrão (caso não especificados):
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=quiz_builder
+
+# ============================================
+# API - NestJS
+# ============================================
+# URL da API para desenvolvimento (usada para gerar URLs de imagens e links)
+# Em desenvolvimento, geralmente é localhost
+API_URL=http://localhost:3003
+
+# Porta da API (padrão: 3003)
+API_PORT=3003
+
+# Secret para JWT tokens (em desenvolvimento pode ser um valor simples)
+# Em produção, SEMPRE use um valor aleatório e seguro
+# Gere com: openssl rand -base64 32
+JWT_SECRET=supersecretkey
+
+# ============================================
+# Frontend - Next.js
+# ============================================
+# URL da API que o frontend usará para fazer requisições
+# Em desenvolvimento, geralmente é localhost
+NEXT_PUBLIC_API_URL=http://localhost:3003
+
+# Porta do frontend (padrão: 3002)
+# O Next.js roda na porta 3000 dentro do container, mas é mapeado para 3002
+WEB_PORT=3002
+
+# ============================================
+# Opcional: Configurações Adicionais
+# ============================================
+# Para habilitar CORS em desenvolvimento (geralmente não necessário):
+# CORS_ORIGIN=http://localhost:3002
+
+# Para logs mais detalhados em desenvolvimento:
+# LOG_LEVEL=debug
+
+# ============================================
+# Notas de Desenvolvimento
+# ============================================
+# IMPORTANTE: 
+# - Este arquivo é para desenvolvimento local apenas
+# - As senhas aqui são simples e NÃO devem ser usadas em produção
+# - O JWT_SECRET aqui é apenas para desenvolvimento
+# - Em produção, use o arquivo .env.prod com valores seguros
+# - Este arquivo pode ser commitado no git (mas não o .env.dev com valores reais)
+

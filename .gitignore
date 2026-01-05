@@ -1,0 +1,23 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+coverage
+
+# Production
+dist
+build
+.next
+out
+
+# Misc
+.DS_Store
+*.log
+.env
+.turbo
+
+# IDEs
+.vscode
+.idea

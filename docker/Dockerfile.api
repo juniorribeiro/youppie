@@ -1,0 +1,43 @@
+FROM node:20-alpine AS base
+
+FROM base AS builder
+WORKDIR /app
+# Enable corepack for yarn
+RUN corepack enable
+COPY . .
+RUN yarn install --frozen-lockfile
+RUN yarn workspace @repo/api build
+
+FROM base AS dev
+WORKDIR /app
+RUN corepack enable
+# Install openssl for Prisma
+RUN apk add --no-cache openssl
+COPY package.json yarn.lock tsconfig.base.json ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+COPY packages ./packages
+# Install all dependencies (including dev)
+RUN yarn install
+# Copy source code 
+COPY . .
+# Generate prisma client with new binary targets
+RUN npx prisma generate
+CMD ["yarn", "workspace", "@repo/api", "start:dev"]
+
+FROM base AS runner
+WORKDIR /app
+# Install openssl for Prisma and wget for health checks
+RUN apk add --no-cache openssl wget
+RUN corepack enable
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/api/dist ./dist
+COPY --from=builder /app/apps/api/package.json ./
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/yarn.lock ./yarn.lock
+# Copy prisma directory for migrations
+COPY --from=builder /app/prisma ./prisma
+# Need prisma client in runner too if not bundled
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+CMD ["node", "dist/main"]
