@@ -18,7 +18,7 @@ export default function DashboardLayout({
 
     const handleLogout = () => {
         logout();
-        router.push("/auth/login");
+        router.push("/");
     };
 
     return (
@@ -32,7 +32,7 @@ export default function DashboardLayout({
                             <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-lg">
                                 Q
                             </div>
-                            <span className="text-xl font-bold text-gray-900">QuizBuilder</span>
+                            <span className="text-xl font-bold text-gray-900">Youppie</span>
                         </div>
                     </div>
 
