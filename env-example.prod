@@ -79,7 +79,7 @@ STRIPE_PRICE_ID_ENTERPRISE=price_...
 # ============================================
 # Segurança
 # ============================================
-# IMPORTANTE: 
+# IMPORTANTE:
 # - NUNCA commite o arquivo .env.prod no git
 # - Use senhas fortes e únicas
 # - Rotacione o JWT_SECRET periodicamente
