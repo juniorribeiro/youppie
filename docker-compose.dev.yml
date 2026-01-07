@@ -24,6 +24,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-youppie_builder}?schema=public
       - JWT_SECRET=${JWT_SECRET:-supersecretkey}
+      - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET:-admin_secret_key_dev_only}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - STRIPE_PRICE_ID_BASIC=${STRIPE_PRICE_ID_BASIC}
@@ -57,6 +58,27 @@ services:
       - /app/node_modules
       - /app/apps/web/node_modules
       - /app/apps/web/.next
+    depends_on:
+      - api
+    networks:
+      - app-network
+
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      target: dev
+    container_name: youppie_admin
+    ports:
+      - "3004:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3003
+      - API_URL_INTERNAL=http://api:3003
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/admin/node_modules
+      - /app/apps/admin/.next
     depends_on:
       - api
     networks:

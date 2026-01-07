@@ -21,13 +21,41 @@ export async function apiFetch<T>(endpoint: string, options: FetchOptions = {}):
             const error = await res.json().catch(() => ({}));
             console.log("Erro da API:", error);
             
-            // NestJS pode colocar o objeto dentro de message quando é BadRequestException
-            const errorData = typeof error.message === 'object' ? error.message : error;
+            // NestJS pode retornar message como string ou array de objetos
+            let errorMessage = 'Erro desconhecido';
             
-            const apiError: any = new Error(errorData.message || error.message || 'API Error');
-            apiError.code = errorData.code || error.code;
-            apiError.currentPlan = errorData.currentPlan || error.currentPlan;
-            apiError.limit = errorData.limit || error.limit;
+            if (typeof error.message === 'string') {
+                errorMessage = error.message;
+            } else if (Array.isArray(error.message)) {
+                // Se for array de erros de validação
+                errorMessage = error.message
+                    .map((err: any) => {
+                        if (typeof err === 'string') return err;
+                        if (err?.constraints) {
+                            return Object.values(err.constraints).join(', ');
+                        }
+                        return err?.message || JSON.stringify(err);
+                    })
+                    .join('; ');
+            } else if (error.message && typeof error.message === 'object') {
+                // Se message for um objeto com errors
+                if (Array.isArray(error.message.errors)) {
+                    errorMessage = error.message.errors
+                        .map((e: any) => e.constraints?.join(', ') || e.field)
+                        .join('; ');
+                } else {
+                    errorMessage = error.message.message || JSON.stringify(error.message);
+                }
+            } else if (error.errors && Array.isArray(error.errors)) {
+                errorMessage = error.errors
+                    .map((e: any) => e.constraints?.join(', ') || e.field)
+                    .join('; ');
+            }
+            
+            const apiError: any = new Error(errorMessage);
+            apiError.code = error.code;
+            apiError.currentPlan = error.currentPlan;
+            apiError.limit = error.limit;
             console.log("API Error criado:", { code: apiError.code, message: apiError.message });
             throw apiError;
         }

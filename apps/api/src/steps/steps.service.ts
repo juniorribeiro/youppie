@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { QuizzesService } from '../quizzes/quizzes.service';
 import { CreateStepDto, UpdateStepDto } from './dto/step.dto';
@@ -43,6 +43,9 @@ export class StepsService {
     }
 
     async create(userId: string, quizId: string, createStepDto: CreateStepDto) {
+        if (!quizId) {
+            throw new BadRequestException('quizId is required');
+        }
         await this.quizzesService.findOne(userId, quizId); // Ownership check
 
         const { question, quizId: _, ...stepData } = createStepDto;

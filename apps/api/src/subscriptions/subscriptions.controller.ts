@@ -9,7 +9,12 @@ export class SubscriptionsController {
 
     @Get('plans')
     async getPlans() {
-        return this.subscriptionsService.getPlans();
+        try {
+            return await this.subscriptionsService.getPlans();
+        } catch (error) {
+            console.error('Error in getPlans:', error);
+            throw error;
+        }
     }
 
     @Get('me')

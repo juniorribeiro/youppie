@@ -13,6 +13,12 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { LeadsModule } from './leads/leads.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { ToursModule } from './tours/tours.module';
+import { AdminAuthModule } from './admin-auth/admin-auth.module';
+import { AdminUsersModule } from './admin-users/admin-users.module';
+import { TicketsModule } from './tickets/tickets.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { UserOverridesModule } from './user-overrides/user-overrides.module';
+import { SystemAlertsModule } from './system-alerts/system-alerts.module';
 
 @Module({
     imports: [
@@ -32,6 +38,12 @@ import { ToursModule } from './tours/tours.module';
         LeadsModule,
         SubscriptionsModule,
         ToursModule,
+        AdminAuthModule,
+        AdminUsersModule,
+        TicketsModule,
+        NotificationsModule,
+        UserOverridesModule,
+        SystemAlertsModule,
     ],
     controllers: [],
     providers: [],

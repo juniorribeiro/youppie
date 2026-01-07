@@ -15,7 +15,10 @@ export interface PlanInfo {
     interval?: string; // Intervalo de cobrança (ex: 'month', 'year')
 }
 
+import { IsEnum } from 'class-validator';
+
 export class CreateSubscriptionIntentDto {
+    @IsEnum(SubscriptionPlan)
     plan: SubscriptionPlan;
 }
 

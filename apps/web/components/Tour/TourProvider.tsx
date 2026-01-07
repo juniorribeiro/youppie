@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 import { useTourStore } from '@/store/tour';
 import { useTour } from '@/hooks/useTour';
@@ -13,29 +13,38 @@ interface TourProviderProps {
 }
 
 export default function TourProvider({ tourId, steps, children }: TourProviderProps) {
-    const { run, currentTourId, setCompleted, stopTour } = useTourStore();
+    const { run, currentTourId, setCompleted, stopTour, completed } = useTourStore();
     const { checkTourStatus, completeTour } = useTour();
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated());
     const [isChecking, setIsChecking] = useState(true);
+    const isCompletingRef = useRef(false);
 
     useEffect(() => {
-        if (!isAuthenticated || isChecking) return;
+        if (!isAuthenticated || isChecking || isCompletingRef.current) return;
 
         const checkAndStartTour = async () => {
+            // Não reiniciar se já foi completado ou se está rodando o tour correto
+            if (completed || (run && currentTourId === tourId)) {
+                return;
+            }
+
             // Só verifica se o tour atual não está rodando ou não corresponde ao tourId
             if (!run || currentTourId !== tourId) {
-                const completed = await checkTourStatus(tourId);
-                if (!completed) {
+                const completedStatus = await checkTourStatus(tourId);
+                if (!completedStatus) {
                     // Aguardar um pouco para garantir que o DOM está renderizado
                     setTimeout(() => {
                         useTourStore.getState().startTour(tourId);
                     }, 300);
+                } else {
+                    // Se já está completo no servidor, marcar como completo localmente
+                    setCompleted(true);
                 }
             }
         };
 
         checkAndStartTour();
-    }, [isAuthenticated, tourId, checkTourStatus, currentTourId, isChecking, run, steps]);
+    }, [isAuthenticated, tourId, checkTourStatus, currentTourId, isChecking, run, steps, completed, setCompleted]);
 
     useEffect(() => {
         // Marca como não está mais verificando após um pequeno delay
@@ -52,11 +61,26 @@ export default function TourProvider({ tourId, steps, children }: TourProviderPr
 
         // Lidar com status de conclusão
         if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+            // Prevenir chamadas duplicadas usando ref para sincronização imediata
+            if (isCompletingRef.current) {
+                return;
+            }
+
+            // Marcar como completando ANTES de qualquer operação assíncrona
+            isCompletingRef.current = true;
             setCompleted(true);
             stopTour();
             
             if (status === STATUS.FINISHED) {
-                await completeTour(tourId);
+                try {
+                    await completeTour(tourId);
+                } catch (error) {
+                    // Não reiniciar o tour em caso de erro - já foi marcado como completo e parado
+                } finally {
+                    isCompletingRef.current = false;
+                }
+            } else {
+                isCompletingRef.current = false;
             }
             return;
         }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Put, Patch, Param, Delete, UseGuards, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Patch, Param, Delete, UseGuards, Request, Query, BadRequestException } from '@nestjs/common';
 import { StepsService } from './steps.service';
 import { CreateStepDto, UpdateStepDto } from './dto/step.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -23,6 +23,9 @@ export class StepsController {
     // POST /steps (body contains quizId)
     @Post()
     create(@Request() req: any, @Body() createStepDto: CreateStepDto) {
+        if (!createStepDto.quizId) {
+            throw new BadRequestException('quizId is required');
+        }
         return this.stepsService.create(req.user.id, createStepDto.quizId, createStepDto);
     }
 

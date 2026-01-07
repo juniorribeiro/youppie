@@ -14,6 +14,11 @@ export class QuizzesService {
         // Verificar limite de quizzes
         await this.checkQuizLimit(userId);
 
+        // Validar que title existe e é uma string não vazia
+        if (!createQuizDto.title || typeof createQuizDto.title !== 'string' || !createQuizDto.title.trim()) {
+            throw new BadRequestException('Title is required and must be a non-empty string');
+        }
+
         const slug = this.generateSlug(createQuizDto.title);
         return this.prisma.quiz.create({
             data: {
@@ -130,6 +135,11 @@ export class QuizzesService {
     }
 
     private generateSlug(title: string): string {
+        // Validação defensiva adicional
+        if (!title || typeof title !== 'string') {
+            throw new BadRequestException('Title must be a non-empty string to generate slug');
+        }
+
         return title
             .toLowerCase()
             .trim()

@@ -33,6 +33,10 @@ API_PORT=3003
 # Gere com: openssl rand -base64 32
 JWT_SECRET=supersecretkey
 
+# Secret para JWT tokens do admin (separado do JWT de usuários)
+# Gere com: openssl rand -base64 32
+ADMIN_JWT_SECRET=admin_secret_key_dev_only
+
 # ============================================
 # Frontend - Next.js
 # ============================================

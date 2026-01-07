@@ -154,6 +154,10 @@ export default function StepsList({ quizId }: { quizId: string }) {
     }, [token, quizId]);
 
     const addStep = async (type: Step["type"]) => {
+        if (!quizId) {
+            alert("Erro: ID do quiz não encontrado");
+            return;
+        }
         const maxOrder = steps.length > 0 ? Math.max(...steps.map((s) => s.order)) : 0;
         try {
             const newStep = await apiFetch<Step>("/steps", {

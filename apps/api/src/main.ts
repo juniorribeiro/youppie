@@ -1,22 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { json } from 'express';
+import { ValidationPipe, BadRequestException } from '@nestjs/common';
+import { HttpExceptionFilter } from './common/http-exception.filter';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
         rawBody: true,
-    });
-    
-    // Middleware de JSON para todas as rotas (exceto webhooks)
-    app.use((req: any, res, next) => {
-        if (req.path.startsWith('/webhooks/stripe')) {
-            return next();
-        }
-        if (req.headers['content-type']?.includes('application/json')) {
-            json()(req, res, next);
-        } else {
-            next();
-        }
+        bodyParser: true,
     });
     
     // Configurar raw body apenas para webhooks do Stripe
@@ -24,10 +15,36 @@ async function bootstrap() {
         req.rawBody = buf;
     }}));
     
+    // Garantir que JSON está sendo parseado para outras rotas
+    app.use(json());
+    
+    app.useGlobalPipes(new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: false,
+        transform: true,
+        transformOptions: {
+            enableImplicitConversion: true,
+        },
+        exceptionFactory: (errors) => {
+            const formattedErrors = errors.map((error) => ({
+                field: error.property,
+                constraints: Object.values(error.constraints || {}),
+            }));
+            console.error('Validation errors:', formattedErrors);
+            return new BadRequestException({
+                message: formattedErrors.map((e) => e.constraints.join(', ')).join('; '),
+                errors: formattedErrors,
+            });
+        },
+    }));
+    
+    app.useGlobalFilters(new HttpExceptionFilter());
+    
     app.enableCors();
     await app.listen(3003);
     console.log('API running on http://localhost:3003');
 }
 bootstrap().catch((err) => {
     console.error('Failed to start API:', err);
+    process.exit(1);
 });

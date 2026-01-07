@@ -29,6 +29,9 @@ model User {
 
   quizzes                       Quiz[]
   tour_completions              TourCompletion[]
+  tickets                       Ticket[]
+  notifications                 Notification[]
+  overrides                     UserOverride[]
 
   @@map("users")
 }
@@ -170,4 +173,138 @@ model TourCompletion {
   @@unique([user_id, tour_id])
   @@map("tour_completions")
   @@index([user_id])
+}
+
+model Admin {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  password_hash String
+  name         String
+  created_at   DateTime @default(now())
+
+  created_overrides UserOverride[]
+
+  @@map("admins")
+}
+
+enum TicketStatus {
+  OPEN
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Ticket {
+  id         String         @id @default(uuid())
+  user_id    String
+  subject    String
+  status     TicketStatus   @default(OPEN)
+  priority   TicketPriority @default(MEDIUM)
+  created_at DateTime       @default(now())
+  updated_at DateTime       @default(now()) @updatedAt
+
+  user      User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  messages  TicketMessage[]
+
+  @@map("tickets")
+  @@index([user_id])
+  @@index([status])
+  @@index([created_at])
+}
+
+enum SenderType {
+  USER
+  ADMIN
+}
+
+model TicketMessage {
+  id            String     @id @default(uuid())
+  ticket_id     String
+  sender_type   SenderType
+  sender_id     String
+  message       String
+  attachment_url String?
+  created_at    DateTime   @default(now())
+
+  ticket        Ticket     @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+
+  @@map("ticket_messages")
+  @@index([ticket_id])
+  @@index([created_at])
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  ERROR
+  SUCCESS
+}
+
+model Notification {
+  id         String           @id @default(uuid())
+  user_id    String?
+  title      String
+  message    String
+  type       NotificationType @default(INFO)
+  is_read    Boolean          @default(false)
+  auto_open  Boolean          @default(false)
+  created_at DateTime         @default(now())
+
+  user       User?            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+  @@index([user_id])
+  @@index([is_read])
+  @@index([created_at])
+}
+
+enum OverrideType {
+  PLAN_LIMITS
+  PREMIUM_FEATURES
+  CUSTOM
+}
+
+model UserOverride {
+  id           String       @id @default(uuid())
+  user_id      String
+  override_type OverrideType
+  expires_at   DateTime?
+  metadata     Json?
+  created_by   String
+  created_at   DateTime     @default(now())
+
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  admin        Admin        @relation(fields: [created_by], references: [id], onDelete: Cascade)
+
+  @@map("user_overrides")
+  @@index([user_id])
+  @@index([override_type])
+  @@index([expires_at])
+}
+
+enum AlertType {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+model SystemAlert {
+  id         String     @id @default(uuid())
+  title      String
+  message    String
+  type       AlertType  @default(INFO)
+  dismissible Boolean   @default(true)
+  active     Boolean    @default(true)
+  created_at DateTime   @default(now())
+  updated_at DateTime   @default(now()) @updatedAt
+
+  @@map("system_alerts")
+  @@index([active])
+  @@index([created_at])
 }

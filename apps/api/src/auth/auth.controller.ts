@@ -12,34 +12,35 @@ export class AuthController {
 
     @Post('login')
     async login(@Body() loginDto: LoginDto) {
-        const user = await this.authService.validateUser(loginDto.email, loginDto.password);
-        if (!user) {
-            throw new UnauthorizedException('Invalid credentials');
+        try {
+            const user = await this.authService.validateUser(loginDto.email, loginDto.password);
+            if (!user) {
+                throw new UnauthorizedException('Invalid credentials');
+            }
+            const token = await this.authService.login(user);
+            
+            // Buscar subscription info
+            const subscription = await this.subscriptionsService.getUserSubscription(user.id);
+            
+            return {
+                ...token,
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    avatar_url: user.avatar_url,
+                    subscription_plan: subscription.plan,
+                    subscription_status: subscription.status,
+                },
+            };
+        } catch (error: any) {
+            console.error('Login error:', error);
+            throw error;
         }
-        const token = await this.authService.login(user);
-        
-        // Buscar subscription info
-        const subscription = await this.subscriptionsService.getUserSubscription(user.id);
-        
-        return {
-            ...token,
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                avatar_url: user.avatar_url,
-                subscription_plan: subscription.plan,
-                subscription_status: subscription.status,
-            },
-        };
     }
 
     @Post('register')
     async register(@Body() registerDto: RegisterDto) {
-        if (!registerDto || !registerDto.email || !registerDto.password || !registerDto.name) {
-            throw new BadRequestException('Name, email and password are required');
-        }
-
         try {
             const user = await this.authService.register(registerDto);
             const token = await this.authService.login(user);
@@ -59,6 +60,7 @@ export class AuthController {
                 },
             };
         } catch (error: any) {
+            console.error('Register error:', error);
             if (error.code === 'P2002') {
                 // Prisma unique constraint violation
                 throw new ConflictException('Email already in use');
