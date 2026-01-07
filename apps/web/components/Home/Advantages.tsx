@@ -42,14 +42,15 @@ export default function Advantages() {
                 </div>
 
                 {/* Advantages Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" role="list">
                     {advantages.map((advantage, index) => (
-                        <div
+                        <article
                             key={index}
                             className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow border border-gray-100"
+                            role="listitem"
                         >
                             <div className="flex items-start gap-4">
-                                <div className="flex-shrink-0">
+                                <div className="flex-shrink-0" aria-hidden="true">
                                     <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
                                         <CheckCircle2 className="w-6 h-6 text-primary-600" />
                                     </div>
@@ -63,7 +64,7 @@ export default function Advantages() {
                                     </p>
                                 </div>
                             </div>
-                        </div>
+                        </article>
                     ))}
                 </div>
             </div>

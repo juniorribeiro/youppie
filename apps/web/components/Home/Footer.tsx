@@ -11,7 +11,7 @@ export default function Footer() {
                         <div className="flex items-center space-x-3 mb-4">
                             <Image
                                 src="/logo.png"
-                                alt="Youppie"
+                                alt="Youppie - Plataforma Brasileira de Quizzes Interativos"
                                 width={270}
                                 height={90}
                                 className="h-12 w-auto"

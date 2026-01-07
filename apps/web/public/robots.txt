@@ -1,0 +1,31 @@
+# Robots.txt para Youppie - Plataforma de Quizzes Interativos
+
+# Permitir todos os bots
+User-agent: *
+Allow: /
+
+# Permitir recursos estáticos
+Allow: /logo.png
+Allow: /logo-grande.png
+Allow: /favicon.ico
+
+# Permitir API pública (se necessário)
+Allow: /api/public/
+
+# Bloquear áreas privadas
+Disallow: /dashboard/
+Disallow: /auth/
+Disallow: /api/private/
+
+# Bloquear arquivos temporários e de sistema
+Disallow: /_next/
+Disallow: /node_modules/
+Disallow: /.next/
+Disallow: /.git/
+
+# Sitemap
+Sitemap: https://youppie.com.br/sitemap.xml
+
+# Crawl-delay (opcional - remova se não necessário)
+# Crawl-delay: 1
+

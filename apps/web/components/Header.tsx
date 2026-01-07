@@ -17,7 +17,7 @@ export default function Header({ onLoginClick }: HeaderProps) {
                     <div className="flex items-center space-x-3">
                         <Image
                             src="/logo.png"
-                            alt="Youppie"
+                            alt="Youppie - Criador de Quizzes Interativos"
                             width={270}
                             height={90}
                             className="h-12 w-auto"

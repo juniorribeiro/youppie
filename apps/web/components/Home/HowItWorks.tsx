@@ -37,25 +37,25 @@ export default function HowItWorks() {
                 </div>
 
                 {/* Steps */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <ol className="grid grid-cols-1 md:grid-cols-3 gap-8" role="list">
                     {steps.map((step, index) => {
                         const Icon = step.icon;
                         return (
-                            <div key={index} className="relative">
+                            <li key={index} className="relative" role="listitem">
                                 {/* Connector Line (hidden on mobile) */}
                                 {index < steps.length - 1 && (
-                                    <div className="hidden md:block absolute top-16 left-full w-full h-0.5 bg-gradient-to-r from-primary-200 to-transparent z-0" style={{ width: 'calc(100% - 4rem)', marginLeft: '4rem' }}></div>
+                                    <div className="hidden md:block absolute top-16 left-full w-full h-0.5 bg-gradient-to-r from-primary-200 to-transparent z-0" style={{ width: 'calc(100% - 4rem)', marginLeft: '4rem' }} aria-hidden="true"></div>
                                 )}
                                 
-                                <Card className="relative z-10 hover-lift border-gray-200">
-                                    <CardContent className="p-8 text-center">
+                                <article className="relative z-10 hover-lift border-gray-200 rounded-lg bg-white border shadow-sm">
+                                    <div className="p-8 text-center">
                                         {/* Step Number */}
-                                        <div className="text-6xl font-bold text-primary-100 mb-4">
+                                        <div className="text-6xl font-bold text-primary-100 mb-4" aria-label={`Passo ${index + 1}`}>
                                             {step.number}
                                         </div>
                                         
                                         {/* Icon */}
-                                        <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                        <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6" aria-hidden="true">
                                             <Icon className="w-8 h-8 text-primary-600" />
                                         </div>
                                         
@@ -68,12 +68,12 @@ export default function HowItWorks() {
                                         <p className="text-gray-600 leading-relaxed">
                                             {step.description}
                                         </p>
-                                    </CardContent>
-                                </Card>
-                            </div>
+                                    </div>
+                                </article>
+                            </li>
                         );
                     })}
-                </div>
+                </ol>
             </div>
         </section>
     );

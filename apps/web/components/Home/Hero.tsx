@@ -26,7 +26,7 @@ export default function Hero({ onLoginClick }: HeroProps) {
                     <div className="flex justify-center mb-12 animate-fade-in">
                         <Image
                             src="/logo-grande.png"
-                            alt="Youppie"
+                            alt="Youppie - Plataforma Brasileira de Quizzes Interativos"
                             width={400}
                             height={133}
                             className="w-full max-w-md h-auto"
@@ -80,17 +80,17 @@ export default function Hero({ onLoginClick }: HeroProps) {
                     </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-3xl mx-auto animate-fade-in">
-                        <div className="text-center">
-                            <div className="text-4xl font-bold text-primary-600 mb-2">100%</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-3xl mx-auto animate-fade-in" role="list">
+                        <div className="text-center" role="listitem">
+                            <div className="text-4xl font-bold text-primary-600 mb-2" aria-label="100 por cento">100%</div>
                             <div className="text-gray-600">Sem Código</div>
                         </div>
-                        <div className="text-center">
-                            <div className="text-4xl font-bold text-primary-600 mb-2">∞</div>
+                        <div className="text-center" role="listitem">
+                            <div className="text-4xl font-bold text-primary-600 mb-2" aria-label="Quizzes ilimitados">∞</div>
                             <div className="text-gray-600">Quizzes Ilimitados</div>
                         </div>
-                        <div className="text-center">
-                            <div className="text-4xl font-bold text-primary-600 mb-2">24/7</div>
+                        <div className="text-center" role="listitem">
+                            <div className="text-4xl font-bold text-primary-600 mb-2" aria-label="Disponível 24 horas por dia, 7 dias por semana">24/7</div>
                             <div className="text-gray-600">Disponível</div>
                         </div>
                     </div>

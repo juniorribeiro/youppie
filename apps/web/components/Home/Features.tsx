@@ -56,16 +56,17 @@ export default function Features() {
                 </div>
 
                 {/* Features Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" role="list">
                     {features.map((feature, index) => {
                         const Icon = feature.icon;
                         return (
-                            <Card
+                            <article
                                 key={index}
-                                className="hover-lift border-gray-200 transition-all duration-300 hover:border-primary-300"
+                                className="hover-lift border-gray-200 transition-all duration-300 hover:border-primary-300 rounded-lg bg-white border shadow-sm"
+                                role="listitem"
                             >
-                                <CardContent className="p-6">
-                                    <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mb-4">
+                                <div className="p-6">
+                                    <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mb-4" aria-hidden="true">
                                         <Icon className="w-6 h-6 text-primary-600" />
                                     </div>
                                     <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -74,8 +75,8 @@ export default function Features() {
                                     <p className="text-gray-600 leading-relaxed">
                                         {feature.description}
                                     </p>
-                                </CardContent>
-                            </Card>
+                                </div>
+                            </article>
                         );
                     })}
                 </div>
