@@ -76,6 +76,19 @@ export default function QuizRunner({ slug }: { slug: string }) {
             return;
         }
 
+        // Validar step CAPTURE - pelo menos um campo deve estar preenchido
+        if (currentStep.type === "CAPTURE") {
+            const captureFields = (currentStep.metadata?.captureFields as any) || { name: true, email: true, phone: false };
+            const hasName = captureFields.name !== false && val?.name?.trim();
+            const hasEmail = captureFields.email !== false && val?.email?.trim();
+            const hasPhone = captureFields.phone === true && val?.phone?.trim();
+            
+            if (!hasName && !hasEmail && !hasPhone) {
+                alert("Por favor, preencha pelo menos um dos campos solicitados");
+                return;
+            }
+        }
+
         setIsAdvancing(true);
 
         try {
@@ -87,6 +100,35 @@ export default function QuizRunner({ slug }: { slug: string }) {
                         value: val,
                     }),
                 });
+            }
+
+            // Se for step CAPTURE e tiver dados, criar/atualizar lead
+            if (currentStep.type === "CAPTURE" && val && (val.name || val.email || val.phone)) {
+                if (!sessionId) {
+                    // Se não existe sessão, criar uma nova com lead
+                    const newSession = await apiFetch<{ id: string }>("/sessions", {
+                        method: "POST",
+                        body: JSON.stringify({
+                            quizId: quiz.id,
+                            lead: {
+                                email: val.email || '',
+                                name: val.name,
+                                phone: val.phone,
+                            },
+                        }),
+                    });
+                    setSessionId(newSession.id);
+                } else {
+                    // Se já existe sessão, criar ou atualizar o lead
+                    await apiFetch(`/sessions/${sessionId}/lead`, {
+                        method: "POST",
+                        body: JSON.stringify({
+                            email: val.email || '',
+                            name: val.name,
+                            phone: val.phone,
+                        }),
+                    });
+                }
             }
 
             if (isLastStep) {

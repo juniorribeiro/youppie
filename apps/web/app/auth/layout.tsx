@@ -1,4 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui";
+import Image from "next/image";
+import { Card, CardContent, CardHeader } from "@repo/ui";
 
 export default function AuthLayout({
     children,
@@ -9,9 +10,16 @@ export default function AuthLayout({
         <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
-                    <CardTitle className="text-2xl font-bold text-blue-600">
-                        Youppie
-                    </CardTitle>
+                    <div className="flex justify-center mb-4">
+                        <Image
+                            src="/logo.png"
+                            alt="Youppie"
+                            width={270}
+                            height={90}
+                            className="h-16 w-auto"
+                            priority
+                        />
+                    </div>
                 </CardHeader>
                 <CardContent>{children}</CardContent>
             </Card>

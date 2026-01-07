@@ -1,12 +1,19 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateQuizDto, UpdateQuizDto } from './dto/quiz.dto';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 @Injectable()
 export class QuizzesService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private subscriptionsService: SubscriptionsService,
+    ) { }
 
     async create(userId: string, createQuizDto: CreateQuizDto) {
+        // Verificar limite de quizzes
+        await this.checkQuizLimit(userId);
+
         const slug = this.generateSlug(createQuizDto.title);
         return this.prisma.quiz.create({
             data: {
@@ -15,6 +22,42 @@ export class QuizzesService {
                 user_id: userId,
             },
         });
+    }
+
+    async checkQuizLimit(userId: string): Promise<void> {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                quizzes: true,
+            },
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        // Verificar se a assinatura ainda está ativa (não expirou)
+        const isSubscriptionActive = 
+            user.subscription_status === 'active' ||
+            (user.subscription_current_period_end && 
+             new Date(user.subscription_current_period_end) > new Date());
+
+        // Se não está ativa, usar plano FREE
+        const effectivePlan = isSubscriptionActive 
+            ? user.subscription_plan 
+            : 'FREE';
+
+        const planLimit = await this.subscriptionsService.getPlanLimits(effectivePlan as any);
+        const currentQuizCount = user.quizzes.length;
+
+        if (currentQuizCount >= planLimit) {
+            throw new BadRequestException({
+                code: 'QUIZ_LIMIT_REACHED',
+                message: `Você atingiu o limite de ${planLimit} quiz(zes) do seu plano atual. Faça upgrade para criar mais quizzes.`,
+                currentPlan: effectivePlan,
+                limit: planLimit,
+            });
+        }
     }
 
     async findAll(userId: string) {
@@ -45,6 +88,16 @@ export class QuizzesService {
                                 options: true
                             }
                         }
+                    }
+                },
+                user: {
+                    select: {
+                        google_analytics_id: true,
+                        google_tag_manager_id: true,
+                        facebook_pixel_id: true,
+                        tracking_head: true,
+                        tracking_body: true,
+                        tracking_footer: true,
                     }
                 }
             }

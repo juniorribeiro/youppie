@@ -10,7 +10,7 @@ NODE_ENV=production
 # ============================================
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=SUA_SENHA_SEGURA_AQUI
-POSTGRES_DB=quiz_builder
+POSTGRES_DB=youppie
 
 # ============================================
 # API - NestJS
@@ -35,6 +35,32 @@ NEXT_PUBLIC_API_URL=https://api.seudominio.com
 
 # Porta do frontend (padrão: 3002)
 WEB_PORT=3002
+
+# ============================================
+# Stripe - Pagamentos
+# ============================================
+# Chave secreta do Stripe (backend)
+# Obtenha em: https://dashboard.stripe.com/apikeys
+# Use chaves de produção (sk_live_...) para produção
+STRIPE_SECRET_KEY=sk_live_...
+
+# Secret do webhook do Stripe (backend)
+# Obtenha em: https://dashboard.stripe.com/webhooks
+# Crie um endpoint apontando para: https://seudominio.com/webhooks/stripe
+# Copie o "Signing secret" (whsec_...)
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Chave pública do Stripe (frontend)
+# Obtenha em: https://dashboard.stripe.com/apikeys
+# Use chaves de produção (pk_live_...) para produção
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+
+# Price IDs dos planos do Stripe
+# Crie os produtos e preços no Stripe Dashboard e copie os IDs
+# Obtenha em: https://dashboard.stripe.com/products
+STRIPE_PRICE_ID_BASIC=price_...
+STRIPE_PRICE_ID_PRO=price_...
+STRIPE_PRICE_ID_ENTERPRISE=price_...
 
 # ============================================
 # Opcional: Configurações Adicionais

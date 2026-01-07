@@ -24,6 +24,11 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-youppie_builder}?schema=public
       - JWT_SECRET=${JWT_SECRET:-supersecretkey}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - STRIPE_PRICE_ID_BASIC=${STRIPE_PRICE_ID_BASIC}
+      - STRIPE_PRICE_ID_PRO=${STRIPE_PRICE_ID_PRO}
+      - STRIPE_PRICE_ID_ENTERPRISE=${STRIPE_PRICE_ID_ENTERPRISE}
     volumes:
       - .:/app
       - /app/node_modules
@@ -46,6 +51,7 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:3003
       # For server-side fetching via docker network
       - API_URL_INTERNAL=http://api:3003
+      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
     volumes:
       - .:/app
       - /app/node_modules

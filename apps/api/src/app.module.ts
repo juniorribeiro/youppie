@@ -9,6 +9,10 @@ import { StepsModule } from './steps/steps.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { HealthModule } from './health/health.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { LeadsModule } from './leads/leads.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { ToursModule } from './tours/tours.module';
 
 @Module({
     imports: [
@@ -24,6 +28,10 @@ import { HealthModule } from './health/health.module';
         SessionsModule,
         UploadsModule,
         HealthModule,
+        AnalyticsModule,
+        LeadsModule,
+        SubscriptionsModule,
+        ToursModule,
     ],
     controllers: [],
     providers: [],

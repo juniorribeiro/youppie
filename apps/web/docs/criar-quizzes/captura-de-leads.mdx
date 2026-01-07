@@ -1,0 +1,137 @@
+---
+title: Captura de Leads
+description: Aprenda como configurar a captura de dados dos visitantes do seu quiz
+---
+
+# Captura de Leads
+
+## O que você pode fazer
+
+A captura de leads permite que você colete informações de contato dos visitantes do seu quiz. Você pode capturar nome, e-mail e telefone, e esses dados ficarão disponíveis na seção de Leads do dashboard.
+
+## Como funciona
+
+### Passo 1: Adicione um step de captura
+
+No editor de quiz, para adicionar um step de captura:
+
+1. Clique no botão **"Adicionar Step"** ou **"+"**
+2. Selecione o tipo **"Captura"** ou **"CAPTURE"**
+
+> **💡 Dica:** Você pode adicionar múltiplos steps de captura em um quiz, mas geralmente é recomendado ter apenas um, posicionado antes ou depois das perguntas.
+
+### Passo 2: Configure o título e descrição
+
+Como em outros steps, você pode definir:
+
+- **Título (Interno)**: Para identificação no editor
+- **Descrição/Texto**: Texto que aparece acima dos campos de captura
+
+**Exemplo de descrição:**
+```
+Para receber seu resultado personalizado, preencha seus dados abaixo:
+```
+
+> **💡 Dica:** Use a descrição para explicar por que você precisa dos dados e o que o visitante receberá em troca.
+
+### Passo 3: Selecione os campos a capturar
+
+No editor de step de captura, você verá uma seção **"Campos de Captura"** com três opções:
+
+- **Nome**: Campo para capturar o nome do visitante
+- **E-mail**: Campo para capturar o e-mail (obrigatório)
+- **Telefone**: Campo para capturar o telefone
+
+Para cada campo:
+- Marque a caixa de seleção para incluir o campo
+- Desmarque para não incluir
+
+> **⚠️ Atenção:** Pelo menos um campo deve estar selecionado. O e-mail é altamente recomendado, pois é usado para identificar leads únicos.
+
+### Passo 4: Salve a configuração
+
+Após selecionar os campos, clique no botão **"Salvar"** no topo do editor. A configuração será salva.
+
+> **💡 Dica:** Você pode editar os campos de captura a qualquer momento clicando no step e alterando as seleções.
+
+## Quando os leads são capturados
+
+O Youppie oferece três modos de captura que você pode configurar no quiz:
+
+### Modo Anônimo (ANONYMOUS)
+- O visitante pode responder o quiz sem fornecer dados
+- Os leads são capturados apenas se o visitante preencher o step de captura
+- Útil para quizzes que não exigem dados obrigatórios
+
+### Modo Antes (BEFORE)
+- O visitante precisa fornecer dados antes de começar o quiz
+- Os leads são capturados no início
+- Útil para garantir que todos os visitantes forneçam dados
+
+### Modo Depois (AFTER)
+- O visitante responde o quiz primeiro
+- Os dados são solicitados no final, antes do resultado
+- Útil para aumentar a taxa de conversão
+
+> **💡 Dica:** O modo padrão é ANONYMOUS. Você pode alterar o modo nas configurações do quiz.
+
+## Exemplo prático
+
+Ana está criando um quiz sobre perfil de investidor. Ela adiciona um step de captura no final:
+
+**Título interno**: "Captura de Dados"
+**Descrição**: "Preencha seus dados para receber seu perfil de investidor completo por e-mail"
+**Campos selecionados**:
+- ✅ Nome
+- ✅ E-mail
+- ❌ Telefone
+
+Quando um visitante completa o quiz e preenche o step de captura, os dados são salvos automaticamente na seção de Leads.
+
+## Boas práticas
+
+### Explique o valor
+
+- Use a descrição para explicar o que o visitante receberá
+- Seja claro sobre o uso dos dados
+- Ofereça algo em troca (resultado personalizado, e-book, etc.)
+
+### Não exija muitos campos
+
+- Quanto mais campos, menor a taxa de conversão
+- Solicite apenas o essencial
+- E-mail geralmente é suficiente
+
+### Posicione estrategicamente
+
+- **No início**: Garante captura, mas pode reduzir engajamento
+- **No meio**: Bom equilíbrio entre engajamento e captura
+- **No final**: Maior engajamento, mas pode reduzir captura
+
+## Perguntas frequentes
+
+**P: Quantos steps de captura posso adicionar?**
+R: Você pode adicionar múltiplos, mas geralmente um é suficiente. Múltiplos steps podem confundir o visitante.
+
+**P: O e-mail é obrigatório?**
+R: Tecnicamente não, mas é altamente recomendado. Pelo menos um campo deve estar selecionado.
+
+**P: Os dados são validados?**
+R: Sim, o sistema valida o formato do e-mail e garante que pelo menos um campo seja preenchido antes de avançar.
+
+**P: Onde vejo os leads capturados?**
+R: Todos os leads capturados aparecem na seção [Leads](/docs/leads/visualizar-leads) do dashboard.
+
+**P: Posso exportar os leads?**
+R: Sim, você pode exportar os leads em CSV ou JSON. Veja mais em [Exportar Leads](/docs/leads/exportar-leads).
+
+**P: Os leads são únicos?**
+R: O sistema identifica leads únicos principalmente pelo e-mail. Se o mesmo e-mail for usado em diferentes quizzes, será tratado como o mesmo lead.
+
+## Próximos passos
+
+- [Visualizar leads](/docs/leads/visualizar-leads) - Veja os leads capturados
+- [Exportar leads](/docs/leads/exportar-leads) - Exporte os dados
+- [Página de resultado](/docs/criar-quizzes/pagina-resultado) - Configure a página final
+- [Publicar quiz](/docs/criar-quizzes/publicar-quiz) - Publique seu quiz
+

@@ -164,6 +164,8 @@ export default function StepRenderer({ step, value, onChange }: StepRendererProp
 
     if (step.type === "CAPTURE") {
         const hasHtml = isHtmlContent(step.description);
+        const captureFields = (step.metadata?.captureFields as any) || { name: true, email: true, phone: false };
+        
         return (
             <div className="space-y-8 animate-slide-up">
                 <div className="text-center">
@@ -180,23 +182,38 @@ export default function StepRenderer({ step, value, onChange }: StepRendererProp
                 </div>
 
                 <div className="space-y-4 max-w-md mx-auto">
-                    <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">Nome</label>
-                        <Input
-                            placeholder="Seu nome completo"
-                            value={value?.name || ""}
-                            onChange={(e) => onChange({ ...value, name: e.target.value })}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">Email</label>
-                        <Input
-                            type="email"
-                            placeholder="seu@email.com"
-                            value={value?.email || ""}
-                            onChange={(e) => onChange({ ...value, email: e.target.value })}
-                        />
-                    </div>
+                    {captureFields.name !== false && (
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-gray-700">Nome</label>
+                            <Input
+                                placeholder="Seu nome completo"
+                                value={value?.name || ""}
+                                onChange={(e) => onChange({ ...value, name: e.target.value })}
+                            />
+                        </div>
+                    )}
+                    {captureFields.email !== false && (
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-gray-700">Email</label>
+                            <Input
+                                type="email"
+                                placeholder="seu@email.com"
+                                value={value?.email || ""}
+                                onChange={(e) => onChange({ ...value, email: e.target.value })}
+                            />
+                        </div>
+                    )}
+                    {captureFields.phone === true && (
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-gray-700">Telefone</label>
+                            <Input
+                                type="tel"
+                                placeholder="(00) 00000-0000"
+                                value={value?.phone || ""}
+                                onChange={(e) => onChange({ ...value, phone: e.target.value })}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
         );

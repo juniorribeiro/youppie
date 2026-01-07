@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { X, Mail, Lock, AlertCircle, User, CheckCircle } from "lucide-react";
 import { Button, Input } from "@repo/ui";
 import { apiFetch } from "@/lib/api";
@@ -10,11 +11,12 @@ import { useAuthStore } from "@/store/auth";
 interface LoginModalProps {
     isOpen: boolean;
     onClose: () => void;
+    selectedPlanId?: string;
 }
 
 type ModalMode = "login" | "register";
 
-export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
+export default function LoginModal({ isOpen, onClose, selectedPlanId }: LoginModalProps) {
     const router = useRouter();
     const setAuth = useAuthStore((state) => state.setAuth);
     const [mode, setMode] = useState<ModalMode>("login");
@@ -70,7 +72,15 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
             setAuth(data.access_token, data.user);
             onClose();
-            router.push("/dashboard");
+            
+            // Se há plano selecionado, abrir modal de planos
+            const planId = selectedPlanId || sessionStorage.getItem("selectedPlanId");
+            if (planId) {
+                sessionStorage.setItem("selectedPlanId", planId);
+                window.dispatchEvent(new CustomEvent("openPlansModal", { detail: { planId } }));
+            } else {
+                router.push("/dashboard");
+            }
         } catch (err: any) {
             setError(err.message || "Email ou senha inválidos");
         } finally {
@@ -84,19 +94,26 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
         setLoading(true);
 
         try {
-            await apiFetch("/auth/register", {
+            const data = await apiFetch<{ access_token: string; user: any }>("/auth/register", {
                 method: "POST",
                 body: JSON.stringify({ name, email: registerEmail, password: registerPassword }),
             });
 
+            // Auto-login após registro
+            setAuth(data.access_token, data.user);
             setSuccess(true);
             setTimeout(() => {
-                setMode("login");
-                setSuccess(false);
-                setRegisterEmail("");
-                setRegisterPassword("");
-                setName("");
-            }, 2000);
+                onClose();
+                
+                // Se há plano selecionado, abrir modal de planos
+                const planId = selectedPlanId || sessionStorage.getItem("selectedPlanId");
+                if (planId) {
+                    sessionStorage.setItem("selectedPlanId", planId);
+                    window.dispatchEvent(new CustomEvent("openPlansModal", { detail: { planId } }));
+                } else {
+                    router.push("/dashboard");
+                }
+            }, 1500);
         } catch (err: any) {
             setError(err.message || "Erro ao criar conta");
         } finally {
@@ -162,8 +179,15 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
                     {/* Header */}
                     <div className="text-center mb-8">
-                        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-full shadow-lg mb-4">
-                            <span className="text-3xl">{mode === "login" ? "🎯" : "🚀"}</span>
+                        <div className="flex justify-center mb-4">
+                            <Image
+                                src="/logo.png"
+                                alt="Youppie"
+                                width={200}
+                                height={67}
+                                className="h-12 w-auto"
+                                priority
+                            />
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900 mb-2">
                             {mode === "login" ? "Bem-vindo de volta" : "Crie sua conta"}

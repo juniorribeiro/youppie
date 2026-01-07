@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Button } from "@repo/ui";
 import { ArrowRight, Sparkles } from "lucide-react";
 
@@ -21,6 +22,18 @@ export default function Hero({ onLoginClick }: HeroProps) {
 
             <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
                 <div className="text-center">
+                    {/* Logo Grande */}
+                    <div className="flex justify-center mb-12 animate-fade-in">
+                        <Image
+                            src="/logo-grande.png"
+                            alt="Youppie"
+                            width={400}
+                            height={133}
+                            className="w-full max-w-md h-auto"
+                            priority
+                        />
+                    </div>
+
                     {/* Badge */}
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-100 text-primary-700 rounded-full text-sm font-semibold mb-8 animate-fade-in">
                         <Sparkles className="w-4 h-4" />

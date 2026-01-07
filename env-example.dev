@@ -16,7 +16,7 @@ NODE_ENV=development
 # Valores padrão (caso não especificados):
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
-POSTGRES_DB=quiz_builder
+POSTGRES_DB=youppie
 
 # ============================================
 # API - NestJS
@@ -43,6 +43,31 @@ NEXT_PUBLIC_API_URL=http://localhost:3003
 # Porta do frontend (padrão: 3002)
 # O Next.js roda na porta 3000 dentro do container, mas é mapeado para 3002
 WEB_PORT=3002
+
+# ============================================
+# Stripe - Pagamentos
+# ============================================
+# Chave secreta do Stripe (backend)
+# Obtenha em: https://dashboard.stripe.com/apikeys
+# Use chaves de teste (sk_test_...) para desenvolvimento
+STRIPE_SECRET_KEY=sk_test_...
+
+# Secret do webhook do Stripe (backend)
+# Obtenha em: https://dashboard.stripe.com/webhooks
+# Crie um endpoint e copie o "Signing secret" (whsec_...)
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Chave pública do Stripe (frontend)
+# Obtenha em: https://dashboard.stripe.com/apikeys
+# Use chaves de teste (pk_test_...) para desenvolvimento
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+
+# Price IDs dos planos do Stripe
+# Crie os produtos e preços no Stripe Dashboard e copie os IDs
+# Obtenha em: https://dashboard.stripe.com/products
+STRIPE_PRICE_ID_BASIC=price_...
+STRIPE_PRICE_ID_PRO=price_...
+STRIPE_PRICE_ID_ENTERPRISE=price_...
 
 # ============================================
 # Opcional: Configurações Adicionais

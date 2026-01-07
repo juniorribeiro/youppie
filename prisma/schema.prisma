@@ -9,15 +9,35 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  name          String
-  email         String   @unique
-  password_hash String
-  created_at    DateTime @default(now())
+  id                            String           @id @default(uuid())
+  name                          String
+  email                         String           @unique
+  password_hash                 String
+  avatar_url                    String?
+  subscription_plan             SubscriptionPlan @default(FREE)
+  stripe_customer_id            String?
+  stripe_subscription_id        String?
+  subscription_status           String?
+  subscription_current_period_end DateTime?
+  google_analytics_id           String?
+  google_tag_manager_id         String?
+  facebook_pixel_id             String?
+  tracking_head                 String?
+  tracking_body                 String?
+  tracking_footer               String?
+  created_at                    DateTime         @default(now())
 
-  quizzes       Quiz[]
+  quizzes                       Quiz[]
+  tour_completions              TourCompletion[]
 
   @@map("users")
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PRO
+  ENTERPRISE
 }
 
 enum CaptureMode {
@@ -100,6 +120,7 @@ model Lead {
   quiz_id    String
   name       String?
   email      String
+  phone      String?
   created_at DateTime @default(now())
 
   quiz       Quiz      @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
@@ -136,4 +157,17 @@ model ResultPage {
 
   @@map("result_pages")
   @@index([quiz_id])
+}
+
+model TourCompletion {
+  id           String   @id @default(uuid())
+  user_id      String
+  tour_id      String
+  completed_at DateTime @default(now())
+
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, tour_id])
+  @@map("tour_completions")
+  @@index([user_id])
 }

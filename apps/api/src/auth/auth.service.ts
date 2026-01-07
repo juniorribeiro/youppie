@@ -12,13 +12,27 @@ export class AuthService {
     ) { }
 
     async register(registerDto: RegisterDto) {
+        if (!registerDto || typeof registerDto !== 'object') {
+            throw new UnauthorizedException('Invalid registration data');
+        }
+
+        if (!registerDto.password || typeof registerDto.password !== 'string' || registerDto.password.trim().length === 0) {
+            throw new UnauthorizedException('Password is required');
+        }
+
+        if (registerDto.password.length < 6) {
+            throw new UnauthorizedException('Password must be at least 6 characters');
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { password, ...data } = registerDto;
         const hashedPassword = await bcrypt.hash(password, 10);
+        
         const user = await this.usersService.create({
             ...data,
             password_hash: hashedPassword,
         });
+        
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { password_hash, ...result } = user;
         return result;

@@ -1,6 +1,6 @@
 import { Controller, Post, Body, Param, Get } from '@nestjs/common';
 import { SessionsService } from './sessions.service';
-import { StartSessionDto, SubmitAnswerDto } from './dto/session.dto';
+import { StartSessionDto, SubmitAnswerDto, CreateSessionLeadDto } from './dto/session.dto';
 
 @Controller('sessions')
 export class SessionsController {
@@ -24,5 +24,10 @@ export class SessionsController {
     @Get(':id')
     getSession(@Param('id') id: string) {
         return this.sessionsService.getSession(id);
+    }
+
+    @Post(':id/lead')
+    createOrUpdateLead(@Param('id') id: string, @Body() dto: CreateSessionLeadDto) {
+        return this.sessionsService.createOrUpdateLead(id, dto);
     }
 }

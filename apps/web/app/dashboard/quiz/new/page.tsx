@@ -1,21 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Card } from "@repo/ui";
 import { apiFetch } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import { Sparkles, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import PlansModal from "@/components/Subscription/PlansModal";
+import LimitWarning from "@/components/Notifications/LimitWarning";
+import { useSubscriptionLimit } from "@/hooks/useSubscriptionLimit";
 
 export default function NewQuizPage() {
     const router = useRouter();
     const token = useAuthStore((state) => state.token);
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState("");
+    const [showPlansModal, setShowPlansModal] = useState(false);
+    const [showLimitWarning, setShowLimitWarning] = useState(false);
+    const [currentPlan, setCurrentPlan] = useState<string | undefined>();
+    const subscriptionLimit = useSubscriptionLimit();
+
+    useEffect(() => {
+        // Buscar plano atual do usuário
+        const fetchSubscription = async () => {
+            try {
+                const subscription = await apiFetch<{ plan: string }>("/subscriptions/me", {
+                    token: token!,
+                });
+                setCurrentPlan(subscription.plan);
+            } catch (error) {
+                console.error("Erro ao buscar assinatura:", error);
+            }
+        };
+        if (token) {
+            fetchSubscription();
+        }
+    }, [token]);
+
+    useEffect(() => {
+        // Mostrar warning se próximo do limite
+        if (subscriptionLimit.isNearLimit && !subscriptionLimit.isAtLimit && !showLimitWarning) {
+            setShowLimitWarning(true);
+        }
+    }, [subscriptionLimit.isNearLimit, subscriptionLimit.isAtLimit, showLimitWarning]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Verificar limite antes de criar
+        if (subscriptionLimit.isAtLimit) {
+            setShowPlansModal(true);
+            return;
+        }
+        
         setLoading(true);
 
         try {
@@ -25,11 +63,60 @@ export default function NewQuizPage() {
                 body: JSON.stringify({ title }),
             });
             router.push(`/dashboard/quiz/${quiz.id}`);
-        } catch (error) {
-            console.error(error);
-            alert("Falha ao criar quiz");
+        } catch (error: any) {
+            console.error("Erro completo:", error);
+            console.error("Error code:", error.code);
+            console.error("Error message:", error.message);
+            // Verificar se é erro de limite atingido
+            if (error.code === "QUIZ_LIMIT_REACHED") {
+                setShowPlansModal(true);
+            } else {
+                alert(error.message || "Falha ao criar quiz");
+            }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSubscriptionSuccess = async () => {
+        setShowPlansModal(false);
+        
+        // Atualizar o plano atual antes de tentar criar o quiz
+        try {
+            const subscription = await apiFetch<{ plan: string }>("/subscriptions/me", {
+                token: token!,
+            });
+            setCurrentPlan(subscription.plan);
+        } catch (error) {
+            console.error("Erro ao atualizar plano:", error);
+        }
+        
+        // Aguardar um pouco para garantir que o webhook processou
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Tentar criar o quiz novamente após upgrade
+        if (title.trim()) {
+            setLoading(true);
+            try {
+                const quiz = await apiFetch<{ id: string }>("/quizzes", {
+                    method: "POST",
+                    token: token!,
+                    body: JSON.stringify({ title }),
+                });
+                router.push(`/dashboard/quiz/${quiz.id}`);
+            } catch (error: any) {
+                console.error(error);
+                if (error.code === "QUIZ_LIMIT_REACHED") {
+                    setShowPlansModal(true);
+                } else {
+                    alert(error.message || "Falha ao criar quiz");
+                }
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            // Se não tinha título, apenas redirecionar para dashboard
+            router.push("/dashboard");
         }
     };
 
@@ -95,6 +182,23 @@ export default function NewQuizPage() {
                     </div>
                 </Card>
             </div>
+
+            <PlansModal
+                isOpen={showPlansModal}
+                onClose={() => setShowPlansModal(false)}
+                onSuccess={handleSubscriptionSuccess}
+                currentPlan={currentPlan}
+            />
+            <LimitWarning
+                isOpen={showLimitWarning}
+                onClose={() => setShowLimitWarning(false)}
+                current={subscriptionLimit.current}
+                limit={subscriptionLimit.limit}
+                onUpgrade={() => {
+                    setShowLimitWarning(false);
+                    setShowPlansModal(true);
+                }}
+            />
         </div>
     );
 }

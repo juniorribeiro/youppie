@@ -31,6 +31,11 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - API_URL=${API_URL}
       - NODE_ENV=production
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - STRIPE_PRICE_ID_BASIC=${STRIPE_PRICE_ID_BASIC}
+      - STRIPE_PRICE_ID_PRO=${STRIPE_PRICE_ID_PRO}
+      - STRIPE_PRICE_ID_ENTERPRISE=${STRIPE_PRICE_ID_ENTERPRISE}
     volumes:
       - uploads_data_prod:/app/uploads
     depends_on:
@@ -53,6 +58,7 @@ services:
       target: runner
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
     container_name: youppie_web_prod
     restart: unless-stopped
     ports:
@@ -61,6 +67,7 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
       - API_URL_INTERNAL=http://api:3003
+      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
     depends_on:
       api:
         condition: service_healthy

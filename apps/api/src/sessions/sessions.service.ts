@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { StartSessionDto, SubmitAnswerDto } from './dto/session.dto';
+import { StartSessionDto, SubmitAnswerDto, CreateSessionLeadDto } from './dto/session.dto';
 
 @Injectable()
 export class SessionsService {
@@ -18,7 +18,8 @@ export class SessionsService {
                 data: {
                     email: dto.lead.email,
                     name: dto.lead.name,
-                    quiz_id: dto.quizId, // Added quiz_id
+                    phone: dto.lead.phone,
+                    quiz_id: dto.quizId,
                 },
             });
             leadId = lead.id;
@@ -66,5 +67,44 @@ export class SessionsService {
         return this.prisma.session.findUnique({
             where: { id: sessionId },
         });
+    }
+
+    async createOrUpdateLead(sessionId: string, dto: CreateSessionLeadDto) {
+        const session = await this.prisma.session.findUnique({
+            where: { id: sessionId },
+            include: { quiz: true },
+        });
+        if (!session) throw new NotFoundException('Session not found');
+
+        // Se já existe lead na sessão, atualizar
+        if (session.lead_id) {
+            const lead = await this.prisma.lead.update({
+                where: { id: session.lead_id },
+                data: {
+                    email: dto.email,
+                    name: dto.name,
+                    phone: dto.phone,
+                },
+            });
+            return lead;
+        }
+
+        // Se não existe lead, criar novo e associar à sessão
+        const lead = await this.prisma.lead.create({
+            data: {
+                email: dto.email,
+                name: dto.name,
+                phone: dto.phone,
+                quiz_id: session.quiz_id,
+            },
+        });
+
+        // Atualizar sessão com o lead_id
+        await this.prisma.session.update({
+            where: { id: sessionId },
+            data: { lead_id: lead.id },
+        });
+
+        return lead;
     }
 }

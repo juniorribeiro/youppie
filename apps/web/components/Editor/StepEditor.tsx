@@ -190,6 +190,57 @@ export default function StepEditor({
                         </div>
                     </div>
                 )}
+                {step.type === "CAPTURE" && (
+                    <div className="rounded-xl border-2 border-success-100 bg-success-50 p-6 space-y-4">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Sparkles className="h-5 w-5 text-success-600" />
+                            <h3 className="font-semibold text-success-900">Campos de Captura</h3>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Selecione quais campos deseja capturar. Pelo menos um campo deve estar selecionado.
+                        </p>
+                        <div className="space-y-3">
+                            {[
+                                { key: 'name', label: 'Nome' },
+                                { key: 'email', label: 'E-mail' },
+                                { key: 'phone', label: 'Telefone' },
+                            ].map((field) => {
+                                const captureFields = (step.metadata?.captureFields as any) || { name: true, email: true, phone: false };
+                                const isChecked = captureFields[field.key] !== false;
+                                
+                                return (
+                                    <label key={field.key} className="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-gray-200 hover:border-success-300 cursor-pointer transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={(e) => {
+                                                const currentFields = (step.metadata?.captureFields as any) || { name: true, email: true, phone: false };
+                                                const newFields = { ...currentFields, [field.key]: e.target.checked };
+                                                
+                                                // Validar que pelo menos um campo está selecionado
+                                                const hasAnyField = Object.values(newFields).some(v => v === true);
+                                                if (!hasAnyField) {
+                                                    alert('Pelo menos um campo deve estar selecionado');
+                                                    return;
+                                                }
+                                                
+                                                setStep({
+                                                    ...step,
+                                                    metadata: {
+                                                        ...step.metadata,
+                                                        captureFields: newFields,
+                                                    },
+                                                });
+                                            }}
+                                            className="w-5 h-5 text-success-600 rounded border-gray-300 focus:ring-success-500"
+                                        />
+                                        <span className="font-medium text-gray-900">{field.label}</span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
                 {step.type === "RESULT" && (
                     <div className="rounded-xl border-2 border-primary-100 bg-primary-50 p-6 space-y-4">
                         <div className="flex items-center gap-2 mb-2">

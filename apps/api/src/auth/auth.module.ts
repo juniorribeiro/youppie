@@ -5,11 +5,13 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
     imports: [
         UsersModule,
         PassportModule,
+        SubscriptionsModule,
         JwtModule.register({
             secret: 'SECRET_KEY_DEV_ONLY', // In real app use env variables
             signOptions: { expiresIn: '60m' },

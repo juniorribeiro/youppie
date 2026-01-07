@@ -1,11 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, MessageSquare, FileText, UserPlus, Trophy } from "lucide-react";
+import { Plus, Trash2, MessageSquare, FileText, UserPlus, Trophy, GripVertical } from "lucide-react";
 import { Button, Card, CardContent, Badge } from "@repo/ui";
 import { apiFetch } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import StepEditor from "./StepEditor";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface Step {
     id: string;
@@ -35,11 +52,91 @@ const STEP_LABELS = {
     RESULT: "Resultado",
 };
 
+interface SortableStepCardProps {
+    step: Step;
+    selectedStepId: string | null;
+    onSelect: (id: string) => void;
+    onDelete: (id: string, e: React.MouseEvent) => void;
+}
+
+function SortableStepCard({ step, selectedStepId, onSelect, onDelete }: SortableStepCardProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: step.id });
+
+    const Icon = STEP_ICONS[step.type];
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            onClick={() => onSelect(step.id)}
+            className={`group flex cursor-pointer items-center justify-between rounded-lg border-2 p-3 transition-all hover:shadow-md ${
+                selectedStepId === step.id
+                    ? "border-primary-500 bg-primary-50 shadow-md scale-105"
+                    : "border-gray-200 bg-white hover:border-gray-300"
+            } ${isDragging ? "z-50 shadow-lg" : ""}`}
+        >
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div
+                    {...attributes}
+                    {...listeners}
+                    className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 transition-colors p-1 -ml-1"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <GripVertical className="h-5 w-5" />
+                </div>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg border ${STEP_COLORS[step.type]}`}>
+                    <Icon className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-400">#{step.order}</span>
+                        <span className="text-sm font-semibold text-gray-900 truncate">
+                            {step.title}
+                        </span>
+                    </div>
+                    <span className="text-xs text-gray-500">{STEP_LABELS[step.type]}</span>
+                </div>
+            </div>
+            <div className="z-10 relative">
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-danger-500 hover:bg-danger-50"
+                    onClick={(e) => onDelete(step.id, e)}
+                >
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </div>
+        </div>
+    );
+}
+
 export default function StepsList({ quizId }: { quizId: string }) {
     const token = useAuthStore((state) => state.token);
     const [steps, setSteps] = useState<Step[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
     const fetchSteps = async () => {
         try {
@@ -90,6 +187,44 @@ export default function StepsList({ quizId }: { quizId: string }) {
         }
     };
 
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        
+        if (!over || active.id === over.id) return;
+
+        const oldIndex = steps.findIndex((s) => s.id === active.id);
+        const newIndex = steps.findIndex((s) => s.id === over.id);
+
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        // Salvar estado anterior para possível reversão
+        const previousSteps = [...steps];
+
+        // Reordenar localmente
+        const newSteps = arrayMove(steps, oldIndex, newIndex);
+        // Atualizar os valores de order para refletir a nova posição
+        const updatedSteps = newSteps.map((step, index) => ({
+            ...step,
+            order: index,
+        }));
+        
+        setSteps(updatedSteps);
+
+        // Salvar no backend
+        try {
+            await apiFetch(`/steps/reorder/${quizId}`, {
+                method: "POST",
+                token: token!,
+                body: JSON.stringify({ orderedIds: updatedSteps.map((s) => s.id) }),
+            });
+        } catch (error) {
+            console.error("Erro ao reordenar steps:", error);
+            // Reverter em caso de erro
+            setSteps(previousSteps);
+            alert("Erro ao reordenar steps. Tente novamente.");
+        }
+    };
+
     return (
         <div className="grid grid-cols-12 gap-6">
             {/* Sidebar */}
@@ -101,49 +236,30 @@ export default function StepsList({ quizId }: { quizId: string }) {
                             <Badge variant="info">{steps.length}</Badge>
                         </div>
 
-                        <div className="space-y-2">
-                            {steps
-                                .sort((a, b) => a.order - b.order)
-                                .map((step) => {
-                                    const Icon = STEP_ICONS[step.type];
-                                    return (
-                                        <div
-                                            key={step.id}
-                                            onClick={() => setSelectedStepId(step.id)}
-                                            className={`group flex cursor-pointer items-center justify-between rounded-lg border-2 p-3 transition-all hover:shadow-md ${selectedStepId === step.id
-                                                ? "border-primary-500 bg-primary-50 shadow-md scale-105"
-                                                : "border-gray-200 bg-white hover:border-gray-300"
-                                                }`}
-                                        >
-                                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                <div className={`flex h-8 w-8 items-center justify-center rounded-lg border ${STEP_COLORS[step.type]}`}>
-                                                    <Icon className="h-4 w-4" />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs font-bold text-gray-400">#{step.order}</span>
-                                                        <span className="text-sm font-semibold text-gray-900 truncate">
-                                                            {step.title}
-                                                        </span>
-                                                    </div>
-                                                    <span className="text-xs text-gray-500">{STEP_LABELS[step.type]}</span>
-                                                </div>
-                                            </div>
-                                            <div className="z-10 relative">
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-8 w-8 p-0 text-gray-400 hover:text-danger-500 hover:bg-danger-50"
-                                                    onClick={(e) => deleteStep(step.id, e)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                        </div>
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                        >
+                            <SortableContext
+                                items={steps.map((s) => s.id)}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                <div className="space-y-2">
+                                    {steps
+                                        .sort((a, b) => a.order - b.order)
+                                        .map((step) => (
+                                            <SortableStepCard
+                                                key={step.id}
+                                                step={step}
+                                                selectedStepId={selectedStepId}
+                                                onSelect={setSelectedStepId}
+                                                onDelete={deleteStep}
+                                            />
+                                        ))}
+                                </div>
+                            </SortableContext>
+                        </DndContext>
 
                         {/* Add Step Buttons */}
                         <div className="mt-6 space-y-2">
