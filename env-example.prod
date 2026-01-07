@@ -26,6 +26,10 @@ API_PORT=3003
 # Gere com: openssl rand -base64 32
 JWT_SECRET=SEU_JWT_SECRET_SUPER_SEGURO_AQUI_GERE_UM_ALEATORIO
 
+# Secret para JWT tokens do admin (separado do JWT de usuários)
+# Gere com: openssl rand -base64 32
+ADMIN_JWT_SECRET=SEU_ADMIN_JWT_SECRET_SUPER_SEGURO_AQUI_GERE_UM_ALEATORIO
+
 # ============================================
 # Frontend - Next.js
 # ============================================
@@ -75,7 +79,7 @@ STRIPE_PRICE_ID_ENTERPRISE=price_...
 # ============================================
 # Segurança
 # ============================================
-# IMPORTANTE: 
+# IMPORTANTE:
 # - NUNCA commite o arquivo .env.prod no git
 # - Use senhas fortes e únicas
 # - Rotacione o JWT_SECRET periodicamente
