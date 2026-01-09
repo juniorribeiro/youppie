@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { Input, Button } from "@repo/ui";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 import DOMPurify from "dompurify";
 
 interface StepRendererProps {
     step: any;
     value: any;
     onChange: (v: any) => void;
+    validationErrors?: Record<string, string>;
 }
 
 // Reusable component to render rich text HTML description
@@ -86,7 +87,7 @@ function ResultStep({ step }: { step: any }) {
     );
 }
 
-export default function StepRenderer({ step, value, onChange }: StepRendererProps) {
+export default function StepRenderer({ step, value, onChange, validationErrors = {} }: StepRendererProps) {
     if (step.type === "TEXT") {
         const hasHtml = isHtmlContent(step.description);
         return (
@@ -189,7 +190,14 @@ export default function StepRenderer({ step, value, onChange }: StepRendererProp
                                 placeholder="Seu nome completo"
                                 value={value?.name || ""}
                                 onChange={(e) => onChange({ ...value, name: e.target.value })}
+                                className={validationErrors.name ? "border-danger-300" : ""}
                             />
+                            {validationErrors.name && (
+                                <div className="text-danger-600 text-sm mt-1 flex items-center gap-1">
+                                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                                    <span>{validationErrors.name}</span>
+                                </div>
+                            )}
                         </div>
                     )}
                     {captureFields.email !== false && (
@@ -200,7 +208,14 @@ export default function StepRenderer({ step, value, onChange }: StepRendererProp
                                 placeholder="seu@email.com"
                                 value={value?.email || ""}
                                 onChange={(e) => onChange({ ...value, email: e.target.value })}
+                                className={validationErrors.email ? "border-danger-300" : ""}
                             />
+                            {validationErrors.email && (
+                                <div className="text-danger-600 text-sm mt-1 flex items-center gap-1">
+                                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                                    <span>{validationErrors.email}</span>
+                                </div>
+                            )}
                         </div>
                     )}
                     {captureFields.phone === true && (
@@ -211,7 +226,14 @@ export default function StepRenderer({ step, value, onChange }: StepRendererProp
                                 placeholder="(00) 00000-0000"
                                 value={value?.phone || ""}
                                 onChange={(e) => onChange({ ...value, phone: e.target.value })}
+                                className={validationErrors.phone ? "border-danger-300" : ""}
                             />
+                            {validationErrors.phone && (
+                                <div className="text-danger-600 text-sm mt-1 flex items-center gap-1">
+                                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                                    <span>{validationErrors.phone}</span>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

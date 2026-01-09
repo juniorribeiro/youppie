@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, Button, Textarea } from "@repo/ui";
+import { Card, CardContent, CardHeader, CardTitle, Button } from "@repo/ui";
 import { apiFetch } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import { Save, Code } from "lucide-react";

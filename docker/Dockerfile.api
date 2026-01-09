@@ -4,9 +4,17 @@ FROM base AS builder
 WORKDIR /app
 # Enable corepack for yarn
 RUN corepack enable
+# Install openssl for Prisma
+RUN apk add --no-cache openssl
 COPY . .
 RUN yarn install --frozen-lockfile
-RUN yarn workspace @repo/api build
+# Generate Prisma Client before build
+RUN npx prisma generate
+# Build the API - need to cd into the directory for nest build to work correctly
+WORKDIR /app/apps/api
+RUN npx nest build && \
+    test -f dist/src/main.js || (echo "ERROR: main.js not found after build" && find . -name "main.js" 2>/dev/null || echo "main.js not found anywhere" && exit 1)
+WORKDIR /app
 
 FROM base AS dev
 WORKDIR /app
@@ -30,14 +38,24 @@ WORKDIR /app
 # Install openssl for Prisma and wget for health checks
 RUN apk add --no-cache openssl wget
 RUN corepack enable
+# Copy workspace structure
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/api/dist ./dist
-COPY --from=builder /app/apps/api/package.json ./
+COPY --from=builder /app/apps/api ./apps/api
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/yarn.lock ./yarn.lock
+COPY --from=builder /app/tsconfig.base.json ./tsconfig.base.json
 # Copy prisma directory for migrations
 COPY --from=builder /app/prisma ./prisma
 # Need prisma client in runner too if not bundled
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-CMD ["node", "dist/main"]
+# Copy entrypoint script
+COPY docker/api-entrypoint.sh /app/api-entrypoint.sh
+# Install netcat for database connection check
+RUN apk add --no-cache netcat-openbsd
+# Make entrypoint script executable
+RUN chmod +x /app/api-entrypoint.sh
+# Create uploads directory with proper permissions
+RUN mkdir -p /app/uploads && chmod 755 /app/uploads
+# Use entrypoint script that runs migrations before starting API
+ENTRYPOINT ["/app/api-entrypoint.sh"]

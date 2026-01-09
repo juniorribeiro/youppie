@@ -13,7 +13,7 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
         PassportModule,
         SubscriptionsModule,
         JwtModule.register({
-            secret: 'SECRET_KEY_DEV_ONLY', // In real app use env variables
+            secret: process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? undefined : 'SECRET_KEY_DEV_ONLY'),
             signOptions: { expiresIn: '60m' },
         }),
     ],

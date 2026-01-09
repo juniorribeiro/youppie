@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StartSessionDto, SubmitAnswerDto, CreateSessionLeadDto } from './dto/session.dto';
 
@@ -7,6 +7,10 @@ export class SessionsService {
     constructor(private prisma: PrismaService) { }
 
     async startSession(dto: StartSessionDto) {
+        if (!dto.quizId) {
+            throw new NotFoundException('Quiz ID is required');
+        }
+        
         const quiz = await this.prisma.quiz.findUnique({
             where: { id: dto.quizId },
         });
@@ -76,14 +80,28 @@ export class SessionsService {
         });
         if (!session) throw new NotFoundException('Session not found');
 
+        // Normalize email: convert empty string to undefined
+        const email = dto.email && dto.email.trim() !== '' ? dto.email.trim() : undefined;
+        const name = dto.name && dto.name.trim() !== '' ? dto.name.trim() : undefined;
+        const phone = dto.phone && dto.phone.trim() !== '' ? dto.phone.trim() : undefined;
+
+        // Email is required in the schema, so we need to provide a placeholder if not provided
+        // But we should validate that at least one field is provided
+        if (!email && !name && !phone) {
+            throw new BadRequestException('At least one field (email, name, or phone) must be provided');
+        }
+
+        // Use a placeholder email if none provided (email is required in schema)
+        const finalEmail = email || `lead-${sessionId}@placeholder.local`;
+
         // Se já existe lead na sessão, atualizar
         if (session.lead_id) {
             const lead = await this.prisma.lead.update({
                 where: { id: session.lead_id },
                 data: {
-                    email: dto.email,
-                    name: dto.name,
-                    phone: dto.phone,
+                    email: finalEmail,
+                    name: name || undefined,
+                    phone: phone || undefined,
                 },
             });
             return lead;
@@ -92,9 +110,9 @@ export class SessionsService {
         // Se não existe lead, criar novo e associar à sessão
         const lead = await this.prisma.lead.create({
             data: {
-                email: dto.email,
-                name: dto.name,
-                phone: dto.phone,
+                email: finalEmail,
+                name: name || undefined,
+                phone: phone || undefined,
                 quiz_id: session.quiz_id,
             },
         });

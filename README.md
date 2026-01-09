@@ -133,13 +133,13 @@ docker compose -f docker-compose.prod.yml down
 ### Backup do Banco de Dados
 
 ```bash
-docker compose -f docker-compose.prod.yml exec db pg_dump -U postgres quiz_builder > backup_$(date +%Y%m%d_%H%M%S).sql
+docker compose -f docker-compose.prod.yml exec db pg_dump -U ${POSTGRES_USER:-postgres} ${POSTGRES_DB:-youppie} > backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
 ### Restaurar Backup
 
 ```bash
-docker compose -f docker-compose.prod.yml exec -T db psql -U postgres quiz_builder < backup.sql
+docker compose -f docker-compose.prod.yml exec -T db psql -U ${POSTGRES_USER:-postgres} ${POSTGRES_DB:-youppie} < backup.sql
 ```
 
 ## 🔒 Segurança em Produção

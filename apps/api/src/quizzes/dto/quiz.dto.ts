@@ -15,8 +15,19 @@ export class CreateQuizDto {
 }
 
 export class UpdateQuizDto {
+    @IsString()
+    @IsOptional()
     title?: string;
+    
+    @IsString()
+    @IsOptional()
     description?: string;
+    
+    @IsBoolean()
+    @IsOptional()
     is_published?: boolean;
+    
+    @IsBoolean()
+    @IsOptional()
     auto_advance?: boolean;
 }

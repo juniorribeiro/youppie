@@ -10,21 +10,12 @@ export class UsersService {
     constructor(private prisma: PrismaService) { }
 
     async create(data: Prisma.UserCreateInput): Promise<User> {
-        // #region agent log
-        fetch('http://127.0.0.1:7246/ingest/5ee8e076-f7e7-47f3-8791-bd14ef960968',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'users.service.ts:11',message:'Prisma user.create called',data:{email:data.email,name:data.name,hasPasswordHash:!!data.password_hash},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B'})}).catch(()=>{});
-        // #endregion
         try {
             const user = await this.prisma.user.create({
                 data,
             });
-            // #region agent log
-            fetch('http://127.0.0.1:7246/ingest/5ee8e076-f7e7-47f3-8791-bd14ef960968',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'users.service.ts:16',message:'Prisma user.create succeeded',data:{userId:user.id,email:user.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B'})}).catch(()=>{});
-            // #endregion
             return user;
         } catch (error: any) {
-            // #region agent log
-            fetch('http://127.0.0.1:7246/ingest/5ee8e076-f7e7-47f3-8791-bd14ef960968',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'users.service.ts:20',message:'Prisma user.create error',data:{errorMessage:error.message,errorCode:error.code,errorName:error.name,meta:error.meta},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B'})}).catch(()=>{});
-            // #endregion
             throw error;
         }
     }

@@ -25,6 +25,8 @@ interface PlansModalProps {
     onClose: () => void;
     onSuccess: () => void;
     currentPlan?: string;
+    selectedPlanId?: string;
+    onPlanSelected?: (planId: string) => void;
 }
 
 export default function PlansModal({ isOpen, onClose, onSuccess, currentPlan, selectedPlanId, onPlanSelected }: PlansModalProps) {

@@ -40,7 +40,21 @@ async function bootstrap() {
     
     app.useGlobalFilters(new HttpExceptionFilter());
     
-    app.enableCors();
+    // Configure CORS
+    const corsOrigin = process.env.CORS_ORIGIN;
+    if (corsOrigin) {
+        app.enableCors({
+            origin: corsOrigin.split(',').map(origin => origin.trim()),
+            credentials: true,
+        });
+    } else if (process.env.NODE_ENV === 'production') {
+        // In production, if CORS_ORIGIN is not set, disable CORS for security
+        console.warn('WARNING: CORS_ORIGIN not set in production. CORS is disabled.');
+    } else {
+        // In development, allow all origins
+        app.enableCors();
+    }
+    
     await app.listen(3003);
     console.log('API running on http://localhost:3003');
 }

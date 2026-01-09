@@ -32,6 +32,7 @@ services:
       - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET}
       - API_URL=${API_URL}
       - NODE_ENV=production
+      - CORS_ORIGIN=http://localhost:3002,http://localhost:3004
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - STRIPE_PRICE_ID_BASIC=${STRIPE_PRICE_ID_BASIC}
@@ -44,7 +45,6 @@ services:
         condition: service_healthy
     networks:
       - app-network-prod
-    command: sh -c "npx prisma db push --skip-generate && node dist/main"
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3003/health || exit 1"]
       interval: 30s
@@ -58,7 +58,8 @@ services:
       dockerfile: docker/Dockerfile.web
       target: runner
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        # Force correct API URL - override any env var that might be wrong
+        NEXT_PUBLIC_API_URL: http://localhost:3003
         NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
     container_name: youppie_web_prod
     restart: unless-stopped
@@ -66,7 +67,7 @@ services:
       - "${WEB_PORT:-3002}:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_API_URL=http://localhost:3003
       - API_URL_INTERNAL=http://api:3003
       - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
     depends_on:
@@ -87,14 +88,15 @@ services:
       dockerfile: apps/admin/Dockerfile
       target: runner
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        # Force correct API URL - override any env var that might be wrong
+        NEXT_PUBLIC_API_URL: http://localhost:3003
     container_name: youppie_admin_prod
     restart: unless-stopped
     ports:
       - "${ADMIN_PORT:-3004}:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_API_URL=http://localhost:3003
       - API_URL_INTERNAL=http://api:3003
     depends_on:
       api:

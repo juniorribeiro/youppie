@@ -24,20 +24,23 @@ export default function QuizEditor({ initialQuiz }: QuizEditorProps) {
 
     const handleSave = async () => {
         setSaving(true);
+        const payload = {
+            title: quiz.title,
+            description: quiz.description,
+            is_published: quiz.is_published,
+            auto_advance: quiz.auto_advance,
+        };
+        
         try {
             const updated = await apiFetch<any>(`/quizzes/${quiz.id}`, {
                 method: "PATCH",
                 token: token!,
-                body: JSON.stringify({
-                    title: quiz.title,
-                    description: quiz.description,
-                    is_published: quiz.is_published,
-                    auto_advance: quiz.auto_advance,
-                }),
+                body: JSON.stringify(payload),
             });
+            
             setQuiz({ ...quiz, ...updated });
             alert("✅ Configurações salvas com sucesso!");
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
             alert("❌ Falha ao salvar");
         } finally {

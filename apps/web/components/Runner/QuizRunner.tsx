@@ -14,6 +14,27 @@ interface Quiz {
     steps: any[];
 }
 
+// Helper function para traduzir mensagens de erro conhecidas
+function translateError(message: string): string {
+    if (!message || typeof message !== 'string') {
+        return message;
+    }
+
+    const lowerMessage = message.toLowerCase();
+    
+    // Se a mensagem já estiver em português correto, retornar como está
+    if (lowerMessage.includes('o e-mail deve ser um endereço válido')) {
+        return 'O e-mail deve ser um endereço válido';
+    }
+
+    // Detectar qualquer erro relacionado a email e sempre retornar a mensagem correta
+    if (lowerMessage.includes('email') && (lowerMessage.includes('valid') || lowerMessage.includes('invalid') || lowerMessage.includes('endereço'))) {
+        return 'O e-mail deve ser um endereço válido';
+    }
+
+    return message;
+}
+
 export default function QuizRunner({ slug }: { slug: string }) {
     const [quiz, setQuiz] = useState<Quiz | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -22,10 +43,15 @@ export default function QuizRunner({ slug }: { slug: string }) {
     const [loading, setLoading] = useState(true);
     const [completed, setCompleted] = useState(false);
     const [isAdvancing, setIsAdvancing] = useState(false);
+    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         apiFetch<Quiz>(`/quizzes/public/${slug}`)
             .then((data) => {
+                if (!data.id) {
+                    throw new Error('Quiz ID not found in response');
+                }
+                
                 setQuiz(data);
                 return apiFetch<{ id: string }>("/sessions", {
                     method: "POST",
@@ -48,6 +74,11 @@ export default function QuizRunner({ slug }: { slug: string }) {
                 .catch(console.error);
         }
     }, [currentStep, sessionId, completed]);
+
+    // Limpar erros de validação quando mudar de step
+    useEffect(() => {
+        setValidationErrors({});
+    }, [currentStepIndex]);
 
     if (loading || !quiz) {
         return (
@@ -92,6 +123,11 @@ export default function QuizRunner({ slug }: { slug: string }) {
         setIsAdvancing(true);
 
         try {
+            // Limpar erros anteriores quando tentar avançar
+            if (currentStep.type === "CAPTURE") {
+                setValidationErrors({});
+            }
+
             if (currentStep.type === "QUESTION" && sessionId && val) {
                 await apiFetch(`/sessions/${sessionId}/answers`, {
                     method: "POST",
@@ -139,8 +175,85 @@ export default function QuizRunner({ slug }: { slug: string }) {
             } else {
                 setCurrentStepIndex(currentStepIndex + 1);
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            
+            // Se for erro de validação em step CAPTURE, extrair e exibir erros
+            if (currentStep.type === "CAPTURE") {
+                const errors: Record<string, string> = {};
+                
+                // Extrair erros do formato do backend
+                if (e.errors && Array.isArray(e.errors)) {
+                    // Formato: [{ field: "email" ou "lead.email", constraints: ["O e-mail deve ser um endereço válido"] }]
+                    e.errors.forEach((error: any) => {
+                        if (error.field && error.constraints && error.constraints.length > 0) {
+                            const translatedMessage = error.constraints
+                                .map((msg: string) => translateError(String(msg)))
+                                .join(', ');
+                            
+                            // Lidar com campos aninhados (ex: "lead.email" -> "email")
+                            let fieldName = error.field;
+                            if (fieldName.includes('.')) {
+                                // Se for campo aninhado como "lead.email", extrair apenas "email"
+                                const parts = fieldName.split('.');
+                                fieldName = parts[parts.length - 1];
+                            }
+                            
+                            errors[fieldName] = translatedMessage;
+                        }
+                    });
+                } else if (e.message) {
+                    // Se não tiver formato estruturado, tentar extrair do message
+                    // Pode ser uma string ou array
+                    if (typeof e.message === 'string') {
+                        const lowerMessage = e.message.toLowerCase();
+                        // Tentar identificar o campo pelo erro (email é o mais comum)
+                        if (lowerMessage.includes('email')) {
+                            errors.email = translateError(e.message);
+                        } else if (lowerMessage.includes('e-mail') || lowerMessage.includes('endereço')) {
+                            // Fallback para mensagens em português
+                            errors.email = translateError(e.message);
+                        }
+                    } else if (Array.isArray(e.message)) {
+                        // Se message for array, processar cada erro
+                        e.message.forEach((err: any) => {
+                            if (typeof err === 'object' && err.property) {
+                                let fieldName = err.property;
+                                if (fieldName.includes('.')) {
+                                    const parts = fieldName.split('.');
+                                    fieldName = parts[parts.length - 1];
+                                }
+                                if (err.constraints && Object.keys(err.constraints).length > 0) {
+                                    const translatedMessage = Object.values(err.constraints)
+                                        .map((msg: any) => translateError(String(msg)))
+                                        .join(', ');
+                                    errors[fieldName] = translatedMessage;
+                                }
+                            } else if (typeof err === 'string') {
+                                // Se for string simples, verificar se é erro de email
+                                const lowerErr = err.toLowerCase();
+                                if (lowerErr.includes('email') || lowerErr.includes('e-mail')) {
+                                    errors.email = translateError(err);
+                                }
+                            }
+                        });
+                    }
+                }
+                
+                // Fallback final: Se não conseguiu extrair erros mas há erro relacionado a email na mensagem
+                if (Object.keys(errors).length === 0 && e.message) {
+                    const errorMessage = String(e.message || '').toLowerCase();
+                    if (errorMessage.includes('email') || errorMessage.includes('e-mail') || errorMessage.includes('endereço')) {
+                        errors.email = 'O e-mail deve ser um endereço válido';
+                    }
+                }
+                
+                if (Object.keys(errors).length > 0) {
+                    setValidationErrors(errors);
+                    // Não avançar para o próximo step quando há erro
+                    return;
+                }
+            }
         } finally {
             setIsAdvancing(false);
         }
@@ -154,6 +267,30 @@ export default function QuizRunner({ slug }: { slug: string }) {
 
     const handleAnswerChange = (value: any) => {
         setAnswers({ ...answers, [currentStep.id]: value });
+
+        // Limpar erros de validação quando o usuário digitar em campos do step CAPTURE
+        if (currentStep.type === "CAPTURE" && validationErrors) {
+            const newErrors = { ...validationErrors };
+            let hasChanges = false;
+            
+            // Se o campo foi alterado, remover seu erro
+            if (value?.name !== undefined && validationErrors.name) {
+                delete newErrors.name;
+                hasChanges = true;
+            }
+            if (value?.email !== undefined && validationErrors.email) {
+                delete newErrors.email;
+                hasChanges = true;
+            }
+            if (value?.phone !== undefined && validationErrors.phone) {
+                delete newErrors.phone;
+                hasChanges = true;
+            }
+            
+            if (hasChanges) {
+                setValidationErrors(newErrors);
+            }
+        }
 
         // Auto-advance logic - only for QUESTION types
         if (quiz.auto_advance === true && currentStep.type === "QUESTION" && !isAdvancing) {
@@ -173,6 +310,7 @@ export default function QuizRunner({ slug }: { slug: string }) {
                         step={lastStep}
                         value={null}
                         onChange={() => {}}
+                        validationErrors={{}}
                     />
                 </div>
             </div>
@@ -205,6 +343,7 @@ export default function QuizRunner({ slug }: { slug: string }) {
                             step={currentStep}
                             value={answers[currentStep?.id || ""]}
                             onChange={handleAnswerChange}
+                            validationErrors={validationErrors}
                         />
                     </div>
 

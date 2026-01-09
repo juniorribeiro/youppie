@@ -15,6 +15,7 @@ interface AvatarUploadProps {
 export default function AvatarUpload({ currentAvatarUrl, onUpdate }: AvatarUploadProps) {
     const token = useAuthStore((state) => state.token);
     const setAuth = useAuthStore((state) => state.setAuth);
+    const currentUser = useAuthStore((state) => state.user);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);

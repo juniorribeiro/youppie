@@ -117,14 +117,18 @@ export class QuizzesService {
 
         const { is_published, auto_advance, ...data } = updateQuizDto;
 
-        return this.prisma.quiz.update({
+        const updateData = {
+            ...data,
+            ...(is_published !== undefined && { is_published }),
+            ...(auto_advance !== undefined && { auto_advance }),
+        };
+
+        const result = await this.prisma.quiz.update({
             where: { id },
-            data: {
-                ...data,
-                ...(is_published !== undefined && { is_published }),
-                ...(auto_advance !== undefined && { auto_advance }),
-            },
+            data: updateData,
         });
+
+        return result;
     }
 
     async remove(userId: string, id: string) {

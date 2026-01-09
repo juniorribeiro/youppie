@@ -56,6 +56,16 @@ export async function apiFetch<T>(endpoint: string, options: FetchOptions = {}):
             apiError.code = error.code;
             apiError.currentPlan = error.currentPlan;
             apiError.limit = error.limit;
+            // Preservar erros de validação estruturados se existirem
+            if (error.errors && Array.isArray(error.errors)) {
+                apiError.errors = error.errors;
+            } else if (error.message && Array.isArray(error.message)) {
+                // Se message for array de erros (formato alternativo do ValidationPipe)
+                apiError.errors = error.message.map((err: any) => ({
+                    field: err.property || err.field,
+                    constraints: err.constraints ? Object.values(err.constraints) : [],
+                }));
+            }
             console.log("API Error criado:", { code: apiError.code, message: apiError.message });
             throw apiError;
         }

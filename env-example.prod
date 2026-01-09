@@ -69,9 +69,11 @@ STRIPE_PRICE_ID_ENTERPRISE=price_...
 # ============================================
 # Opcional: Configurações Adicionais
 # ============================================
-# Se você estiver usando um proxy reverso (nginx, traefik, etc.)
-# e quiser configurar CORS, descomente e ajuste:
-# CORS_ORIGIN=https://seudominio.com
+# CORS - Origins permitidas (separadas por vírgula se múltiplas)
+# IMPORTANTE: Configure isso em produção para segurança
+# Exemplo: https://seudominio.com,https://www.seudominio.com
+# Se não configurado em produção, o CORS será desabilitado por segurança
+CORS_ORIGIN=https://seudominio.com
 
 # Para logs mais detalhados em produção, descomente:
 # LOG_LEVEL=info
