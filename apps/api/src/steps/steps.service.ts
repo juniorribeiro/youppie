@@ -92,13 +92,18 @@ export class StepsService {
 
         const { question, ...stepData } = updateStepDto;
 
+        // Build update data, only including fields that are explicitly provided
+        const updateData: any = {};
+        if (updateStepDto.title !== undefined) updateData.title = updateStepDto.title;
+        if (updateStepDto.order !== undefined) updateData.order = updateStepDto.order;
+        if (updateStepDto.description !== undefined) updateData.description = updateStepDto.description;
+        if (updateStepDto.image_url !== undefined) updateData.image_url = updateStepDto.image_url;
+        if (updateStepDto.metadata !== undefined) updateData.metadata = updateStepDto.metadata;
+
         // Update step basic fields
         const updated = await this.prisma.step.update({
             where: { id },
-            data: {
-                ...stepData,
-                ...(updateStepDto.metadata && { metadata: updateStepDto.metadata }), // Update metadata if provided
-            },
+            data: updateData,
         });
 
         // Update question if provided and step is QUESTION type

@@ -1,0 +1,28 @@
+# Database
+POSTGRES_USER=youppie_prod
+POSTGRES_PASSWORD=SENHA_FORTE_AQUI
+POSTGRES_DB=youppie_prod
+
+# API
+API_PORT=3003
+API_URL=https://api.youppie.com.br
+JWT_SECRET=CHAVE_SECRETA_64_CHARS
+ADMIN_JWT_SECRET=CHAVE_ADMIN_64_CHARS
+
+# Frontend
+WEB_PORT=3002
+ADMIN_PORT=3004
+NEXT_PUBLIC_API_URL=https://api.youppie.com.br
+
+# CORS (domínios reais)
+CORS_ORIGIN=https://youppie.com.br,https://admin.youppie.com.br
+
+# Stripe
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_ID_BASIC=price_...
+STRIPE_PRICE_ID_PRO=price_...
+STRIPE_PRICE_ID_ENTERPRISE=price_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+
+

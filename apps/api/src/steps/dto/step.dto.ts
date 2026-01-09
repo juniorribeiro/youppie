@@ -44,7 +44,11 @@ export class CreateStepDto {
 
     @IsOptional()
     @IsString()
-    content?: string;
+    description?: string;
+
+    @IsOptional()
+    @IsString()
+    image_url?: string;
 
     @IsOptional()
     @IsObject()
@@ -58,10 +62,29 @@ export class CreateStepDto {
 }
 
 export class UpdateStepDto {
+    @IsOptional()
+    @IsString()
     title?: string;
+
+    @IsOptional()
+    @IsNumber()
     order?: number;
-    content?: string;
+
+    @IsOptional()
+    @IsString()
+    description?: string;
+
+    @IsOptional()
+    @IsString()
+    image_url?: string;
+
+    @IsOptional()
+    @IsObject()
     metadata?: Record<string, any>;
+
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => QuestionDto)
     question?: {
         text?: string;
         options?: {

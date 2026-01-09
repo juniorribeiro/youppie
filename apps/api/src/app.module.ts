@@ -15,6 +15,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { ToursModule } from './tours/tours.module';
 import { AdminAuthModule } from './admin-auth/admin-auth.module';
 import { AdminUsersModule } from './admin-users/admin-users.module';
+import { AdminQuizzesModule } from './admin-quizzes/admin-quizzes.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { UserOverridesModule } from './user-overrides/user-overrides.module';
@@ -40,6 +41,7 @@ import { SystemAlertsModule } from './system-alerts/system-alerts.module';
         ToursModule,
         AdminAuthModule,
         AdminUsersModule,
+        AdminQuizzesModule,
         TicketsModule,
         NotificationsModule,
         UserOverridesModule,

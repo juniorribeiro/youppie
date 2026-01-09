@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trash2, Plus, Save, Sparkles } from "lucide-react";
+import { Trash2, Plus, Save, Sparkles, Upload, X, Image as ImageIcon } from "lucide-react";
 import { Button, Input, Card, CardContent, CardHeader, CardTitle } from "@repo/ui";
 import { apiFetch } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import RichTextEditor from "./RichTextEditor";
+import Image from "next/image";
 
 interface Option {
     id?: string;
@@ -42,6 +43,7 @@ export default function StepEditor({
     const [step, setStep] = useState<StepDetail | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
 
     useEffect(() => {
         if (stepId) {
@@ -52,6 +54,41 @@ export default function StepEditor({
         }
     }, [stepId, token]);
 
+    const handleImageUpload = async (file: File) => {
+        if (!token) return;
+
+        setUploadingImage(true);
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const response = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3003"}/uploads/image`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: formData,
+                }
+            );
+
+            if (!response.ok) throw new Error("Upload failed");
+
+            const data = await response.json();
+            setStep({ ...step!, image_url: data.url });
+        } catch (error) {
+            console.error("Upload error:", error);
+            alert("Falha ao fazer upload da imagem");
+        } finally {
+            setUploadingImage(false);
+        }
+    };
+
+    const handleRemoveImage = () => {
+        setStep({ ...step!, image_url: null });
+    };
+
     const handleSave = async () => {
         setSaving(true);
 
@@ -59,6 +96,7 @@ export default function StepEditor({
             const payload: any = {
                 title: step!.title,
                 description: step!.description,
+                image_url: step!.image_url || undefined,
                 metadata: step!.metadata,
             };
 
@@ -111,6 +149,67 @@ export default function StepEditor({
                 <div className="space-y-3">
                     <label className="text-sm font-semibold text-gray-700">Título (Interno)</label>
                     <Input value={step.title} onChange={(e) => setStep({ ...step, title: e.target.value })} />
+                </div>
+
+                {/* Campo de upload de imagem principal */}
+                <div className="space-y-3">
+                    <label className="text-sm font-semibold text-gray-700">Imagem Principal (Opcional)</label>
+                    {step.image_url ? (
+                        <div className="relative">
+                            <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-gray-200">
+                                <Image
+                                    src={step.image_url}
+                                    alt="Imagem do step"
+                                    fill
+                                    className="object-contain"
+                                />
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleRemoveImage}
+                                className="mt-2 text-danger-600 hover:text-danger-700 hover:bg-danger-50"
+                            >
+                                <X className="mr-2 h-4 w-4" />
+                                Remover Imagem
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleImageUpload(file);
+                                }}
+                                className="hidden"
+                                id="step-image-upload"
+                                disabled={uploadingImage}
+                            />
+                            <label
+                                htmlFor="step-image-upload"
+                                className="cursor-pointer flex flex-col items-center gap-2"
+                            >
+                                {uploadingImage ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                                        <span className="text-sm text-gray-600">Enviando...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload className="h-8 w-8 text-gray-400" />
+                                        <span className="text-sm text-gray-600">Clique para fazer upload de uma imagem</span>
+                                        <span className="text-xs text-gray-400">PNG, JPG, GIF ou WebP (máx. 5MB)</span>
+                                    </>
+                                )}
+                            </label>
+                        </div>
+                    )}
+                    <p className="text-xs text-gray-500">
+                        Esta imagem será exibida como imagem principal do step (diferente das imagens inseridas no texto)
+                    </p>
                 </div>
 
                 <div className="space-y-3">

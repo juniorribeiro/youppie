@@ -7,23 +7,8 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
-      # Otimizações PostgreSQL para produção
-      - POSTGRES_INITDB_ARGS=--encoding=UTF8 --lc-collate=C --lc-ctype=C
-    command:
-      - "postgres"
-      - "-c" 
-      - "shared_buffers=256MB"
-      - "-c"
-      - "effective_cache_size=1GB"
-      - "-c"
-      - "max_connections=100"
-      - "-c"
-      - "work_mem=4MB"
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
-    # ⚠️ NÃO expor porta em produção (remover se não precisar acesso externo)
-    # ports:
-    #   - "127.0.0.1:5432:5432"
     networks:
       - app-network-prod
     healthcheck:
@@ -31,14 +16,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.25'
-          memory: 256M
 
   api:
     build:
@@ -48,15 +25,14 @@ services:
     container_name: youppie_api_prod
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${API_PORT:-3003}:3003"
+      - "${API_PORT:-3003}:3003"
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public&connection_limit=20&pool_timeout=20
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
       - JWT_SECRET=${JWT_SECRET}
       - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET}
       - API_URL=${API_URL}
       - NODE_ENV=production
-      # ⚠️ Ajustar CORS para produção (adicionar domínios reais)
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3002,http://localhost:3004}
+      - CORS_ORIGIN=http://localhost:3002,http://localhost:3004
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - STRIPE_PRICE_ID_BASIC=${STRIPE_PRICE_ID_BASIC}
@@ -75,14 +51,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
 
   web:
     build:
@@ -90,16 +58,16 @@ services:
       dockerfile: docker/Dockerfile.web
       target: runner
       args:
-        # ⚠️ Usar URL real em produção
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3003}
+        # Force correct API URL - override any env var that might be wrong
+        NEXT_PUBLIC_API_URL: http://localhost:3003
         NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
     container_name: youppie_web_prod
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${WEB_PORT:-3002}:3000"
+      - "${WEB_PORT:-3002}:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3003}
+      - NEXT_PUBLIC_API_URL=http://localhost:3003
       - API_URL_INTERNAL=http://api:3003
       - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
     depends_on:
@@ -113,14 +81,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    deploy:
-      resources:
-        limits:
-          cpus: '1.5'
-          memory: 1.5G
-        reservations:
-          cpus: '0.25'
-          memory: 256M
 
   admin:
     build:
@@ -128,15 +88,15 @@ services:
       dockerfile: apps/admin/Dockerfile
       target: runner
       args:
-        # ⚠️ Usar URL real em produção
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3003}
+        # Force correct API URL - override any env var that might be wrong
+        NEXT_PUBLIC_API_URL: http://localhost:3003
     container_name: youppie_admin_prod
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${ADMIN_PORT:-3004}:3000"
+      - "${ADMIN_PORT:-3004}:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3003}
+      - NEXT_PUBLIC_API_URL=http://localhost:3003
       - API_URL_INTERNAL=http://api:3003
     depends_on:
       api:
@@ -149,24 +109,12 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.25'
-          memory: 256M
 
 volumes:
   postgres_data_prod:
-    driver: local
   uploads_data_prod:
-    driver: local
 
 networks:
   app-network-prod:
     driver: bridge
-
-
 

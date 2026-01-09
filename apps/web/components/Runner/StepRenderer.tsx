@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Input, Button } from "@repo/ui";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import DOMPurify from "dompurify";
+import Image from "next/image";
 
 interface StepRendererProps {
     step: any;
@@ -67,6 +68,18 @@ function ResultStep({ step }: { step: any }) {
                 </>
             )}
 
+            {step.image_url && (
+                <div className="relative w-full max-w-2xl mx-auto h-64 md:h-96 rounded-lg overflow-hidden border border-gray-200 shadow-lg">
+                    <Image
+                        src={step.image_url}
+                        alt={step.title}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                    />
+                </div>
+            )}
+
             {hasDescription && (
                 <RichDescription description={step.description} />
             )}
@@ -93,6 +106,17 @@ export default function StepRenderer({ step, value, onChange, validationErrors =
         return (
             <div className="space-y-6 text-center animate-slide-up">
                 <h2 className="text-3xl font-bold text-gray-900">{step.title}</h2>
+                {step.image_url && (
+                    <div className="relative w-full max-w-2xl mx-auto h-64 md:h-96 rounded-lg overflow-hidden border border-gray-200 shadow-lg">
+                        <Image
+                            src={step.image_url}
+                            alt={step.title}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                        />
+                    </div>
+                )}
                 {step.description && (
                     hasHtml ? (
                         <RichDescription description={step.description} />
@@ -114,6 +138,17 @@ export default function StepRenderer({ step, value, onChange, validationErrors =
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">
                         {step.question.text || step.title}
                     </h2>
+                    {step.image_url && (
+                        <div className="relative w-full max-w-2xl mx-auto h-64 md:h-96 rounded-lg overflow-hidden border border-gray-200 shadow-lg mb-4">
+                            <Image
+                                src={step.image_url}
+                                alt={step.question.text || step.title}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                            />
+                        </div>
+                    )}
                     {step.description && (
                         hasHtml ? (
                             <RichDescription description={step.description} />
@@ -173,6 +208,17 @@ export default function StepRenderer({ step, value, onChange, validationErrors =
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">
                         {step.title || "Seus Dados"}
                     </h2>
+                    {step.image_url && (
+                        <div className="relative w-full max-w-2xl mx-auto h-64 md:h-96 rounded-lg overflow-hidden border border-gray-200 shadow-lg mb-4">
+                            <Image
+                                src={step.image_url}
+                                alt={step.title || "Seus Dados"}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                            />
+                        </div>
+                    )}
                     {step.description && (
                         hasHtml ? (
                             <RichDescription description={step.description} />

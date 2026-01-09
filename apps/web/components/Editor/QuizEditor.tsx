@@ -7,6 +7,8 @@ import { Button, Input, Card, CardContent, Badge } from "@repo/ui";
 import { apiFetch } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import StepsList from "./StepsList";
+import QuizExportButton from "../Quiz/QuizExportButton";
+import QuizImportModal from "../Quiz/QuizImportModal";
 
 interface QuizEditorProps {
     initialQuiz: any;
@@ -17,6 +19,7 @@ export default function QuizEditor({ initialQuiz }: QuizEditorProps) {
     const [quiz, setQuiz] = useState(initialQuiz);
     const [activeTab, setActiveTab] = useState<"build" | "settings">("build");
     const [saving, setSaving] = useState(false);
+    const [importModalOpen, setImportModalOpen] = useState(false);
 
     const handleUpdate = async (data: Partial<typeof quiz>) => {
         setQuiz({ ...quiz, ...data });
@@ -74,6 +77,15 @@ export default function QuizEditor({ initialQuiz }: QuizEditorProps) {
 
                         {/* Right */}
                         <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <QuizExportButton quizId={quiz.id} />
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => setImportModalOpen(true)}
+                                className="flex-1 sm:flex-none"
+                            >
+                                Importar
+                            </Button>
                             <Link href={`/q/${quiz.slug}`} target="_blank" className="flex-1 sm:flex-none">
                                 <Button variant="outline" size="sm" className="w-full sm:w-auto">
                                     <Eye className="mr-2 h-4 w-4" />
@@ -178,10 +190,35 @@ export default function QuizEditor({ initialQuiz }: QuizEditorProps) {
                                     </div>
                                 </label>
                             </div>
+                            <div className="pt-6 border-t">
+                                <h3 className="text-sm font-semibold text-gray-700 mb-4">Importar / Exportar</h3>
+                                <div className="flex gap-3">
+                                    <QuizExportButton quizId={quiz.id} />
+                                    <Button 
+                                        variant="outline" 
+                                        onClick={() => setImportModalOpen(true)}
+                                    >
+                                        Importar Quiz
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    Exporte este quiz para backup ou importe um quiz existente
+                                </p>
+                            </div>
                         </CardContent>
                     </Card>
                 )}
             </div>
+
+            {/* Import Modal */}
+            <QuizImportModal
+                isOpen={importModalOpen}
+                onClose={() => setImportModalOpen(false)}
+                onSuccess={() => {
+                    // Recarregar a página após importação bem-sucedida
+                    window.location.reload();
+                }}
+            />
         </div>
     );
 }

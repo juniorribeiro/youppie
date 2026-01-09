@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, ExternalLink, Edit, Trash2, Clock } from "lucide-react";
+import { Plus, ExternalLink, Edit, Trash2, Clock, Upload } from "lucide-react";
 import { Button, Card, Badge } from "@repo/ui";
 import { apiFetch } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
+import QuizImportModal from "@/components/Quiz/QuizImportModal";
 
 interface Quiz {
     id: string;
@@ -23,14 +24,24 @@ export default function DashboardPage() {
     const token = useAuthStore((state) => state.token);
     const [quizzes, setQuizzes] = useState<Quiz[]>([]);
     const [loading, setLoading] = useState(true);
+    const [importModalOpen, setImportModalOpen] = useState(false);
+
+    const loadQuizzes = async () => {
+        if (token) {
+            setLoading(true);
+            try {
+                const data = await apiFetch<Quiz[]>("/quizzes", { token });
+                setQuizzes(data);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
 
     useEffect(() => {
-        if (token) {
-            apiFetch<Quiz[]>("/quizzes", { token })
-                .then(setQuizzes)
-                .catch(console.error)
-                .finally(() => setLoading(false));
-        }
+        loadQuizzes();
     }, [token]);
 
     const handleDelete = async (id: string, title: string) => {
@@ -85,12 +96,21 @@ export default function DashboardPage() {
                         {quizzes.length} {quizzes.length === 1 ? 'quiz' : 'quizzes'}
                     </h2>
                 </div>
-                <Link href="/dashboard/quiz/new">
-                    <Button variant="primary">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Criar Quiz
+                <div className="flex items-center gap-2">
+                    <Button 
+                        variant="outline" 
+                        onClick={() => setImportModalOpen(true)}
+                    >
+                        <Upload className="mr-2 h-4 w-4" />
+                        Importar Quiz
                     </Button>
-                </Link>
+                    <Link href="/dashboard/quiz/new">
+                        <Button variant="primary">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Criar Quiz
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -162,6 +182,16 @@ export default function DashboardPage() {
                     </Card>
                 ))}
             </div>
+
+            {/* Modal de Importação */}
+            <QuizImportModal
+                isOpen={importModalOpen}
+                onClose={() => setImportModalOpen(false)}
+                onSuccess={() => {
+                    // Recarregar lista de quizzes após importação bem-sucedida
+                    loadQuizzes();
+                }}
+            />
         </div>
     );
 }
