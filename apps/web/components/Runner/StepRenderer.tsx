@@ -52,6 +52,16 @@ function isHtmlContent(text: string | null): boolean {
     return /<[a-z][\s\S]*>/i.test(text);
 }
 
+// Helper function to convert absolute URL to relative path when from API
+function normalizeImageUrl(url: string | null): string {
+    if (!url) return '';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3003";
+    if (url.startsWith(`${apiUrl}/uploads/`)) {
+        return url.replace(`${apiUrl}/uploads/`, '/uploads/');
+    }
+    return url;
+}
+
 // Separate component for RESULT step to properly use hooks
 function ResultStep({ step }: { step: any }) {
     const hasDescription = Boolean(step.description && step.description.trim().length > 0);
@@ -71,7 +81,7 @@ function ResultStep({ step }: { step: any }) {
             {step.image_url && (
                 <div className="relative w-full max-w-2xl mx-auto h-64 md:h-96 rounded-lg overflow-hidden border border-gray-200 shadow-lg">
                     <Image
-                        src={step.image_url}
+                        src={normalizeImageUrl(step.image_url)}
                         alt={step.title}
                         fill
                         className="object-cover"
@@ -109,7 +119,7 @@ export default function StepRenderer({ step, value, onChange, validationErrors =
                 {step.image_url && (
                     <div className="relative w-full max-w-2xl mx-auto h-64 md:h-96 rounded-lg overflow-hidden border border-gray-200 shadow-lg">
                         <Image
-                            src={step.image_url}
+                            src={normalizeImageUrl(step.image_url)}
                             alt={step.title}
                             fill
                             className="object-cover"
@@ -141,7 +151,7 @@ export default function StepRenderer({ step, value, onChange, validationErrors =
                     {step.image_url && (
                         <div className="relative w-full max-w-2xl mx-auto h-64 md:h-96 rounded-lg overflow-hidden border border-gray-200 shadow-lg mb-4">
                             <Image
-                                src={step.image_url}
+                                src={normalizeImageUrl(step.image_url)}
                                 alt={step.question.text || step.title}
                                 fill
                                 className="object-cover"
@@ -211,7 +221,7 @@ export default function StepRenderer({ step, value, onChange, validationErrors =
                     {step.image_url && (
                         <div className="relative w-full max-w-2xl mx-auto h-64 md:h-96 rounded-lg overflow-hidden border border-gray-200 shadow-lg mb-4">
                             <Image
-                                src={step.image_url}
+                                src={normalizeImageUrl(step.image_url)}
                                 alt={step.title || "Seus Dados"}
                                 fill
                                 className="object-cover"

@@ -45,11 +45,27 @@ export default function StepEditor({
     const [saving, setSaving] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
 
+    // Helper function to convert absolute URL to relative path when from API
+    const normalizeImageUrl = (url: string | null): string => {
+        if (!url) return '';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3003";
+        if (url.startsWith(`${apiUrl}/uploads/`)) {
+            return url.replace(`${apiUrl}/uploads/`, '/uploads/');
+        }
+        return url;
+    };
+
     useEffect(() => {
         if (stepId) {
             setLoading(true);
             apiFetch<StepDetail>(`/steps/${stepId}`, { token: token! })
-                .then(setStep)
+                .then((data) => {
+                    // Normalize image_url when loading from backend
+                    if (data.image_url) {
+                        data.image_url = normalizeImageUrl(data.image_url) || data.image_url;
+                    }
+                    setStep(data);
+                })
                 .finally(() => setLoading(false));
         }
     }, [stepId, token]);
@@ -76,7 +92,9 @@ export default function StepEditor({
             if (!response.ok) throw new Error("Upload failed");
 
             const data = await response.json();
-            setStep({ ...step!, image_url: data.url });
+            // Normalize URL to use relative path for Next.js Image optimization
+            const normalizedUrl = normalizeImageUrl(data.url);
+            setStep({ ...step!, image_url: normalizedUrl || data.url });
         } catch (error) {
             console.error("Upload error:", error);
             alert("Falha ao fazer upload da imagem");
@@ -158,10 +176,11 @@ export default function StepEditor({
                         <div className="relative">
                             <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-gray-200">
                                 <Image
-                                    src={step.image_url}
+                                    src={normalizeImageUrl(step.image_url)}
                                     alt="Imagem do step"
                                     fill
                                     className="object-contain"
+                                    unoptimized
                                 />
                             </div>
                             <Button
