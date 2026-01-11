@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import ProgressBar from '@/components/Loading/ProgressBar'
+import ToastContainer from '@/components/Toast/ToastContainer'
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://youppie.com.br'
 
@@ -89,6 +90,7 @@ export default function RootLayout({
             <body>
                 <ProgressBar />
                 {children}
+                <ToastContainer />
             </body>
         </html>
     )

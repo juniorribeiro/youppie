@@ -11,6 +11,8 @@ import ExpandableMenu from "@/components/Dashboard/ExpandableMenu";
 import TourProvider from "@/components/Tour/TourProvider";
 import TourButton from "@/components/Tour/TourButton";
 import { dashboardTourSteps } from "@/components/Tour/tourSteps";
+import NotificationBell from "@/components/Notifications/NotificationBell";
+import { useNotificationPolling } from "@/hooks/useNotificationPolling";
 
 export default function DashboardLayout({
     children,
@@ -20,6 +22,9 @@ export default function DashboardLayout({
     const logout = useAuthStore((state) => state.logout);
     const user = useAuthStore((state) => state.user);
     const router = useRouter();
+
+    // Iniciar polling de notificações
+    useNotificationPolling();
 
     const handleLogout = () => {
         logout();
@@ -178,6 +183,9 @@ export default function DashboardLayout({
                             <div>
                                 <h1 className="text-2xl font-bold text-gray-900">Meus Quizzes</h1>
                                 <p className="text-sm text-gray-500 mt-1">Gerencie e crie seus quizzes</p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <NotificationBell />
                             </div>
                         </div>
                     </header>
