@@ -76,6 +76,13 @@ export default function DashboardLayout({
                             </div>
                         </Link>
 
+                        <Link href="/dashboard/tickets">
+                            <div className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-lg transition-all cursor-pointer group">
+                                <HelpCircle className="h-5 w-5" />
+                                <span className="font-medium">Suporte</span>
+                            </div>
+                        </Link>
+
                         <Link href="/dashboard/subscription">
                             <div className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-all cursor-pointer group">
                                 <Settings className="h-5 w-5" />

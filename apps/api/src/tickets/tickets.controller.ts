@@ -11,6 +11,7 @@ import {
     UseInterceptors,
     UploadedFile,
     BadRequestException,
+    NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -33,8 +34,41 @@ export class TicketsController {
 
     @UseGuards(JwtAuthGuard)
     @Post()
-    async create(@Request() req: any, @Body() createTicketDto: CreateTicketDto) {
-        return this.ticketsService.create(req.user.id, createTicketDto);
+    @UseInterceptors(
+        FileInterceptor('attachment', {
+            storage: diskStorage({
+                destination: uploadPath,
+                filename: (req, file, callback) => {
+                    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+                    const ext = extname(file.originalname);
+                    callback(null, `ticket-${uniqueSuffix}${ext}`);
+                },
+            }),
+            limits: {
+                fileSize: 10 * 1024 * 1024,
+            },
+            fileFilter: (req, file, callback) => {
+                const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+                if (allowedMimes.includes(file.mimetype)) {
+                    callback(null, true);
+                } else {
+                    callback(new BadRequestException('Tipo de arquivo não permitido'), false);
+                }
+            },
+        }),
+    )
+    async create(
+        @Request() req: any,
+        @Body() createTicketDto: CreateTicketDto,
+        @UploadedFile() file?: Express.Multer.File,
+    ) {
+        let attachmentUrl: string | undefined;
+        if (file) {
+            const baseUrl = process.env.API_URL || 'http://localhost:3003';
+            attachmentUrl = `${baseUrl}/uploads/${file.filename}`;
+        }
+
+        return this.ticketsService.create(req.user.id, createTicketDto, attachmentUrl);
     }
 
     @UseGuards(JwtAuthGuard)
@@ -47,6 +81,13 @@ export class TicketsController {
     @Get(':id')
     async findOne(@Request() req: any, @Param('id') id: string) {
         return this.ticketsService.findOne(id, req.user.id);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Put(':id/status')
+    async updateStatus(@Request() req: any, @Param('id') id: string, @Body() updateStatusDto: UpdateTicketStatusDto) {
+        await this.ticketsService.findOne(id, req.user.id);
+        return this.ticketsService.updateStatus(id, updateStatusDto);
     }
 
     @UseGuards(JwtAuthGuard)

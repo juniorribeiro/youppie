@@ -5,6 +5,10 @@ export class CreateTicketDto {
     @IsString()
     @IsNotEmpty()
     subject: string;
+
+    @IsString()
+    @IsOptional()
+    description?: string;
 }
 
 export class CreateTicketMessageDto {
