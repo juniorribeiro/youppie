@@ -142,6 +142,30 @@ export default function StepRenderer({ step, value, onChange, validationErrors =
 
     if (step.type === "QUESTION" && step.question) {
         const hasHtml = isHtmlContent(step.description);
+        const isMultipleChoice = (step.metadata as any)?.multipleChoice === true;
+        const selectedValues = isMultipleChoice 
+            ? (Array.isArray(value) ? value : [])
+            : (value ? [value] : []);
+
+        const handleOptionClick = (optValue: string) => {
+            if (isMultipleChoice) {
+                const currentArray = Array.isArray(value) ? value : [];
+                const isSelected = currentArray.includes(optValue);
+                if (isSelected) {
+                    onChange(currentArray.filter((v: string) => v !== optValue));
+                } else {
+                    const maxSelections = (step.metadata as any)?.maxSelections;
+                    if (maxSelections && currentArray.length >= maxSelections) {
+                        // Don't allow selection if max is reached (validation will show error)
+                        return;
+                    }
+                    onChange([...currentArray, optValue]);
+                }
+            } else {
+                onChange(optValue);
+            }
+        };
+
         return (
             <div className="space-y-8 animate-slide-up">
                 <div className="text-center">
@@ -170,11 +194,41 @@ export default function StepRenderer({ step, value, onChange, validationErrors =
 
                 <div className="space-y-3">
                     {step.question.options.map((opt: any, idx: number) => {
-                        const isSelected = value === opt.value;
+                        const isSelected = isMultipleChoice 
+                            ? selectedValues.includes(opt.value)
+                            : value === opt.value;
+                        
+                        // Renderizar checkbox tradicional para múltipla escolha
+                        if (isMultipleChoice) {
+                            return (
+                                <label
+                                    key={opt.id || idx}
+                                    className={`group relative flex items-center gap-4 w-full text-left p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer hover:scale-105 ${isSelected
+                                        ? "border-primary-500 bg-primary-50 shadow-lg"
+                                        : "border-gray-200 bg-white hover:border-primary-300 hover:shadow-md"
+                                        }`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => handleOptionClick(opt.value)}
+                                        className="w-5 h-5 text-primary-600 rounded border-gray-300 focus:ring-primary-500 focus:ring-2 cursor-pointer"
+                                    />
+                                    <span
+                                        className={`flex-1 font-medium transition-colors ${isSelected ? "text-primary-700" : "text-gray-700 group-hover:text-gray-900"
+                                            }`}
+                                    >
+                                        {opt.text}
+                                    </span>
+                                </label>
+                            );
+                        }
+                        
+                        // Renderizar botão para escolha única (comportamento original)
                         return (
                             <button
                                 key={opt.id || idx}
-                                onClick={() => onChange(opt.value)}
+                                onClick={() => handleOptionClick(opt.value)}
                                 className={`group relative w-full text-left p-5 rounded-xl border-2 transition-all duration-200 hover:scale-105 ${isSelected
                                     ? "border-primary-500 bg-primary-50 shadow-lg"
                                     : "border-gray-200 bg-white hover:border-primary-300 hover:shadow-md"
@@ -292,6 +346,61 @@ export default function StepRenderer({ step, value, onChange, validationErrors =
                             )}
                         </div>
                     )}
+                </div>
+            </div>
+        );
+    }
+
+    if (step.type === "INPUT") {
+        const hasHtml = isHtmlContent(step.description);
+        const metadata = (step.metadata as any) || {};
+        const inputType = metadata.inputType || 'text';
+        const variableName = metadata.variableName || '';
+        const label = step.title || variableName || 'Input';
+
+        return (
+            <div className="space-y-8 animate-slide-up">
+                <div className="text-center">
+                    <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                        {step.title}
+                    </h2>
+                    {step.image_url && (
+                        <div className="relative w-full max-w-2xl mx-auto h-64 md:h-96 rounded-lg overflow-hidden border border-gray-200 shadow-lg mb-4">
+                            <Image
+                                src={normalizeImageUrl(step.image_url)}
+                                alt={step.title}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                            />
+                        </div>
+                    )}
+                    {step.description && (
+                        hasHtml ? (
+                            <RichDescription description={step.description} />
+                        ) : (
+                            <p className="text-gray-600">{step.description}</p>
+                        )
+                    )}
+                </div>
+
+                <div className="space-y-4 max-w-md mx-auto">
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">{label}</label>
+                        <Input
+                            type={inputType === 'number' ? 'number' : inputType === 'email' ? 'email' : 'text'}
+                            placeholder={step.description || `Digite ${label.toLowerCase()}`}
+                            value={value || ""}
+                            onChange={(e) => onChange(e.target.value)}
+                            className={validationErrors[variableName] ? "border-danger-300" : ""}
+                        />
+                        {validationErrors[variableName] && (
+                            <div className="text-danger-600 text-sm mt-1 flex items-center gap-1">
+                                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                                <span>{validationErrors[variableName]}</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         );

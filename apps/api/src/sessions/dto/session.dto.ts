@@ -71,3 +71,14 @@ export class CreateSessionLeadDto {
     @IsOptional()
     phone?: string;
 }
+
+export class NextStepResponseDto {
+    stepId: string;
+    stepIndex?: number;
+    score?: number;
+    actions?: Array<{
+        type: string;
+        target?: string;
+        value?: any;
+    }>;
+}

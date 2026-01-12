@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Param, Get } from '@nestjs/common';
+import { Controller, Post, Body, Param, Get, Query } from '@nestjs/common';
 import { SessionsService } from './sessions.service';
 import { StartSessionDto, SubmitAnswerDto, CreateSessionLeadDto } from './dto/session.dto';
 
@@ -29,5 +29,10 @@ export class SessionsController {
     @Post(':id/lead')
     createOrUpdateLead(@Param('id') id: string, @Body() dto: CreateSessionLeadDto) {
         return this.sessionsService.createOrUpdateLead(id, dto);
+    }
+
+    @Get(':id/next-step')
+    getNextStep(@Param('id') id: string, @Query('currentStepId') currentStepId: string) {
+        return this.sessionsService.getNextStep(id, currentStepId);
     }
 }

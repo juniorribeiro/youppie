@@ -4,6 +4,8 @@ import { CreateQuizDto, UpdateQuizDto } from './dto/quiz.dto';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { QuizImportExportService } from './quiz-import-export.service';
 import { QuizExportDataDto, ImportOptionsDto, QuizImportPreviewDto } from './dto/quiz-import.dto';
+import { UserOverridesService } from '../user-overrides/user-overrides.service';
+import { SubscriptionPlan } from '../subscriptions/dto/subscription.dto';
 
 @Injectable()
 export class QuizzesService {
@@ -11,6 +13,7 @@ export class QuizzesService {
         private prisma: PrismaService,
         private subscriptionsService: SubscriptionsService,
         private importExportService: QuizImportExportService,
+        private userOverridesService: UserOverridesService,
     ) { }
 
     async create(userId: string, createQuizDto: CreateQuizDto) {
@@ -44,19 +47,34 @@ export class QuizzesService {
             throw new NotFoundException('User not found');
         }
 
-        // Verificar se a assinatura ainda está ativa (não expirou)
-        const isSubscriptionActive = 
-            user.subscription_status === 'active' ||
-            (user.subscription_current_period_end && 
-             new Date(user.subscription_current_period_end) > new Date());
+        let effectivePlan: SubscriptionPlan;
+        
+        // PRIORIDADE 1: Verificar se existe override ativo do tipo PLAN_LIMITS
+        const planOverride = await this.userOverridesService.getActivePlanOverrideForUser(userId);
+        
+        if (planOverride && planOverride.metadata && (planOverride.metadata as any).plan) {
+            // Usar o plano do override
+            effectivePlan = (planOverride.metadata as any).plan as SubscriptionPlan;
+        } else {
+            // PRIORIDADE 2: Verificar se a assinatura ainda está ativa (não expirou)
+            const isSubscriptionActive = 
+                user.subscription_status === 'active' ||
+                (user.subscription_current_period_end && 
+                 new Date(user.subscription_current_period_end) > new Date());
 
-        // Se não está ativa, usar plano FREE
-        const effectivePlan = isSubscriptionActive 
-            ? user.subscription_plan 
-            : 'FREE';
+            // Se não está ativa, usar plano FREE
+            effectivePlan = isSubscriptionActive 
+                ? user.subscription_plan as SubscriptionPlan
+                : SubscriptionPlan.FREE;
+        }
 
-        const planLimit = await this.subscriptionsService.getPlanLimits(effectivePlan as any);
+        const planLimit = await this.subscriptionsService.getPlanLimits(effectivePlan);
         const currentQuizCount = user.quizzes.length;
+
+        // Se o limite for null, significa ilimitado - não verificar
+        if (planLimit === null) {
+            return;
+        }
 
         if (currentQuizCount >= planLimit) {
             throw new BadRequestException({

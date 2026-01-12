@@ -41,6 +41,7 @@ enum SubscriptionPlan {
   BASIC
   PRO
   ENTERPRISE
+  UNLIMITED
 }
 
 enum CaptureMode {
@@ -76,6 +77,7 @@ enum StepType {
   TEXT
   CAPTURE
   RESULT
+  INPUT
 }
 
 model Step {
@@ -138,6 +140,7 @@ model Session {
   quiz_id      String
   lead_id      String?
   answers      Json      @default("{}")
+  score        Int       @default(0)
   completed_at DateTime?
 
   quiz         Quiz      @relation(fields: [quiz_id], references: [id], onDelete: Cascade)

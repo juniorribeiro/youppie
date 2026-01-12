@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, MessageSquare, FileText, UserPlus, Trophy, GripVertical } from "lucide-react";
+import { Plus, Trash2, MessageSquare, FileText, UserPlus, Trophy, GripVertical, Type } from "lucide-react";
 import { Button, Card, CardContent, Badge } from "@repo/ui";
 import { apiFetch } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
@@ -27,7 +27,7 @@ import { CSS } from "@dnd-kit/utilities";
 interface Step {
     id: string;
     title: string;
-    type: "QUESTION" | "TEXT" | "CAPTURE" | "RESULT";
+    type: "QUESTION" | "TEXT" | "CAPTURE" | "RESULT" | "INPUT";
     order: number;
 }
 
@@ -36,6 +36,7 @@ const STEP_ICONS = {
     TEXT: FileText,
     CAPTURE: UserPlus,
     RESULT: Trophy,
+    INPUT: Type,
 };
 
 const STEP_COLORS = {
@@ -43,6 +44,7 @@ const STEP_COLORS = {
     TEXT: "bg-purple-50 text-purple-600 border-purple-200",
     CAPTURE: "bg-success-50 text-success-600 border-success-200",
     RESULT: "bg-warning-50 text-warning-600 border-warning-200",
+    INPUT: "bg-info-50 text-info-600 border-info-200",
 };
 
 const STEP_LABELS = {
@@ -50,6 +52,7 @@ const STEP_LABELS = {
     TEXT: "Texto",
     CAPTURE: "Captura",
     RESULT: "Resultado",
+    INPUT: "Input",
 };
 
 interface SortableStepCardProps {
@@ -158,8 +161,39 @@ export default function StepsList({ quizId }: { quizId: string }) {
             alert("Erro: ID do quiz não encontrado");
             return;
         }
-        const maxOrder = steps.length > 0 ? Math.max(...steps.map((s) => s.order)) : 0;
+        
+        // Ordenar steps por order para encontrar a posição correta
+        const sortedSteps = [...steps].sort((a, b) => a.order - b.order);
+        
+        // Encontrar se existe step RESULT e sua posição
+        const resultStepIndex = sortedSteps.findIndex(s => s.type === "RESULT");
+        
+        let insertOrder: number;
+        let stepsToUpdate: { id: string; order: number }[] = [];
+        
+        if (resultStepIndex !== -1) {
+            // Se existe RESULT, inserir antes dele
+            const resultStep = sortedSteps[resultStepIndex];
+            insertOrder = resultStep.order;
+            
+            // Atualizar orders dos steps que vêm depois (incluindo o RESULT)
+            // Todos os steps com order >= insertOrder precisam ter order + 1
+            sortedSteps.forEach((step, index) => {
+                if (step.order >= insertOrder) {
+                    stepsToUpdate.push({
+                        id: step.id,
+                        order: step.order + 1
+                    });
+                }
+            });
+        } else {
+            // Se não existe RESULT, adicionar no final (comportamento atual)
+            const maxOrder = steps.length > 0 ? Math.max(...steps.map((s) => s.order)) : 0;
+            insertOrder = maxOrder + 1;
+        }
+        
         try {
+            // Criar o novo step
             const newStep = await apiFetch<Step>("/steps", {
                 method: "POST",
                 token: token!,
@@ -167,10 +201,33 @@ export default function StepsList({ quizId }: { quizId: string }) {
                     quizId,
                     title: `Nova ${STEP_LABELS[type]}`,
                     type,
-                    order: maxOrder + 1,
+                    order: insertOrder,
                 }),
             });
-            setSteps([...steps, newStep]);
+            
+            // Atualizar orders dos steps afetados (se houver)
+            if (stepsToUpdate.length > 0) {
+                // Atualizar cada step afetado
+                await Promise.all(
+                    stepsToUpdate.map(stepUpdate =>
+                        apiFetch(`/steps/${stepUpdate.id}`, {
+                            method: "PATCH",
+                            token: token!,
+                            body: JSON.stringify({ order: stepUpdate.order }),
+                        })
+                    )
+                );
+                
+                // Atualizar estado local
+                const updatedSteps = steps.map(step => {
+                    const update = stepsToUpdate.find(u => u.id === step.id);
+                    return update ? { ...step, order: update.order } : step;
+                });
+                setSteps([...updatedSteps, newStep]);
+            } else {
+                setSteps([...steps, newStep]);
+            }
+            
             setSelectedStepId(newStep.id);
         } catch (e) {
             console.error(e);
@@ -200,6 +257,25 @@ export default function StepsList({ quizId }: { quizId: string }) {
         const newIndex = steps.findIndex((s) => s.id === over.id);
 
         if (oldIndex === -1 || newIndex === -1) return;
+
+        // Verificar se está tentando mover para depois de um RESULT
+        const sortedSteps = [...steps].sort((a, b) => a.order - b.order);
+        
+        // Simular o reordenamento para verificar se algum step não-RESULT ficará após um RESULT
+        const reorderedSteps = arrayMove(sortedSteps, oldIndex, newIndex);
+        const resultStepIndex = reorderedSteps.findIndex(s => s.type === "RESULT");
+        
+        // Se há um RESULT na lista reordenada, verificar se algum step não-RESULT vem depois dele
+        if (resultStepIndex !== -1) {
+            const hasNonResultAfter = reorderedSteps
+                .slice(resultStepIndex + 1)
+                .some(s => s.type !== "RESULT");
+            
+            if (hasNonResultAfter) {
+                alert("Não é possível adicionar steps após o step de Resultado");
+                return; // Cancelar o drop
+            }
+        }
 
         // Salvar estado anterior para possível reversão
         const previousSteps = [...steps];

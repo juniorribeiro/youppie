@@ -18,11 +18,13 @@ interface StepDetail {
     id: string;
     title: string;
     description: string | null;
-    type: "QUESTION" | "TEXT" | "CAPTURE" | "RESULT";
+    type: "QUESTION" | "TEXT" | "CAPTURE" | "RESULT" | "INPUT";
     image_url: string | null;
     metadata?: {
         cta_text?: string;
         cta_link?: string;
+        variableName?: string;
+        inputType?: 'text' | 'number' | 'email';
         [key: string]: any;
     };
     question?: {
@@ -243,7 +245,9 @@ export default function StepEditor({
                                     ? "Adicione uma descrição ou contexto para a pergunta..."
                                     : step.type === "CAPTURE"
                                         ? "Escreva o texto para a captura de dados..."
-                                        : "Escreva o conteúdo do texto aqui..."
+                                        : step.type === "INPUT"
+                                            ? "Adicione uma descrição ou instrução para o campo de input..."
+                                            : "Escreva o conteúdo do texto aqui..."
                         }
                     />
                 </div>
@@ -306,6 +310,85 @@ export default function StepEditor({
                                 Adicionar Opção
                             </Button>
                         </div>
+
+                        {/* Configuração de Múltipla Escolha */}
+                        <div className="mt-6 pt-6 border-t border-primary-200 space-y-4">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Sparkles className="h-5 w-5 text-primary-600" />
+                                <h3 className="font-semibold text-primary-900">Configurações de Resposta</h3>
+                            </div>
+                            
+                            <label className="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-gray-200 hover:border-primary-300 cursor-pointer transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={(step.metadata?.multipleChoice as boolean) || false}
+                                    onChange={(e) => {
+                                        const currentMetadata = step.metadata || {};
+                                        setStep({
+                                            ...step,
+                                            metadata: {
+                                                ...currentMetadata,
+                                                multipleChoice: e.target.checked,
+                                                // Reset limits when disabling multiple choice
+                                                ...(e.target.checked ? {} : { minSelections: undefined, maxSelections: undefined }),
+                                            },
+                                        });
+                                    }}
+                                    className="w-5 h-5 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                                />
+                                <span className="font-medium text-gray-900">Permitir múltiplas escolhas</span>
+                            </label>
+
+                            {(step.metadata?.multipleChoice as boolean) && (
+                                <div className="bg-white rounded-lg border-2 border-primary-200 p-4 space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-semibold text-gray-700">Mínimo de seleções</label>
+                                            <Input
+                                                type="number"
+                                                min="1"
+                                                value={(step.metadata?.minSelections as number) || 1}
+                                                onChange={(e) => {
+                                                    const value = e.target.value ? parseInt(e.target.value, 10) : 1;
+                                                    const currentMetadata = step.metadata || {};
+                                                    setStep({
+                                                        ...step,
+                                                        metadata: {
+                                                            ...currentMetadata,
+                                                            minSelections: value,
+                                                        },
+                                                    });
+                                                }}
+                                                className="bg-white"
+                                                placeholder="1"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-semibold text-gray-700">Máximo de seleções</label>
+                                            <Input
+                                                type="number"
+                                                min="1"
+                                                value={(step.metadata?.maxSelections as number | null) ?? ""}
+                                                onChange={(e) => {
+                                                    const value = e.target.value ? parseInt(e.target.value, 10) : null;
+                                                    const currentMetadata = step.metadata || {};
+                                                    setStep({
+                                                        ...step,
+                                                        metadata: {
+                                                            ...currentMetadata,
+                                                            maxSelections: value,
+                                                        },
+                                                    });
+                                                }}
+                                                className="bg-white"
+                                                placeholder="Sem limite"
+                                            />
+                                            <p className="text-xs text-gray-500">Deixe vazio para sem limite</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
                 {step.type === "CAPTURE" && (
@@ -356,6 +439,93 @@ export default function StepEditor({
                                     </label>
                                 );
                             })}
+                        </div>
+
+                        {/* Editor de Regras Condicionais */}
+                        <div className="mt-6 pt-6 border-t border-primary-200 space-y-4">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Sparkles className="h-5 w-5 text-primary-600" />
+                                <h3 className="font-semibold text-primary-900">Regras Condicionais</h3>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-4">
+                                Configure regras que determinam o próximo step baseado em respostas e variáveis. 
+                                Use o formato JSON abaixo.
+                            </p>
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-gray-700">Regras (JSON)</label>
+                                <textarea
+                                    value={JSON.stringify((step.metadata as any)?.rules || [], null, 2)}
+                                    onChange={(e) => {
+                                        try {
+                                            const rules = JSON.parse(e.target.value);
+                                            const currentMetadata = step.metadata || {};
+                                            setStep({
+                                                ...step,
+                                                metadata: {
+                                                    ...currentMetadata,
+                                                    rules: rules,
+                                                },
+                                            });
+                                        } catch (err) {
+                                            // Invalid JSON, não atualizar
+                                        }
+                                    }}
+                                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white font-mono text-sm focus:outline-none focus:border-primary-500"
+                                    rows={10}
+                                    placeholder='[\n  {\n    "id": "rule1",\n    "conditions": [\n      {\n        "type": "answer",\n        "source": "stepId",\n        "operator": "==",\n        "value": "opcao1"\n      }\n    ],\n    "actions": [\n      {\n        "type": "goto",\n        "target": "nextStepId"\n      }\n    ]\n  }\n]'
+                                />
+                                <p className="text-xs text-gray-500">
+                                    Formato: array de regras. Cada regra tem conditions (array) e actions (array).
+                                    Operadores: ==, !=, &gt;, &lt;, &gt;=, &lt;=, in, notIn
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {step.type === "INPUT" && (
+                    <div className="rounded-xl border-2 border-info-100 bg-info-50 p-6 space-y-4">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Sparkles className="h-5 w-5 text-info-600" />
+                            <h3 className="font-semibold text-info-900">Configuração de Campo de Input</h3>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Configure o campo de input que será usado para capturar uma variável dinâmica.
+                        </p>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-gray-700">Nome da Variável</label>
+                                <Input
+                                    value={step.metadata?.variableName || ""}
+                                    onChange={(e) => setStep({
+                                        ...step,
+                                        metadata: { ...step.metadata, variableName: e.target.value }
+                                    })}
+                                    placeholder="Ex: nome, idade, peso"
+                                    className="bg-white"
+                                />
+                                <p className="text-xs text-gray-500">
+                                    Nome da variável que será armazenada (sem espaços, apenas letras minúsculas e números). 
+                                    Pode ser usado em textos com {"{{variável}}"}.
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-gray-700">Tipo de Input</label>
+                                <select
+                                    value={step.metadata?.inputType || "text"}
+                                    onChange={(e) => setStep({
+                                        ...step,
+                                        metadata: { ...step.metadata, inputType: e.target.value as 'text' | 'number' | 'email' }
+                                    })}
+                                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:outline-none focus:border-primary-500"
+                                >
+                                    <option value="text">Texto</option>
+                                    <option value="number">Número</option>
+                                    <option value="email">E-mail</option>
+                                </select>
+                                <p className="text-xs text-gray-500">
+                                    Tipo de campo que será exibido para o usuário.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 )}

@@ -3,12 +3,13 @@ export enum SubscriptionPlan {
     BASIC = 'BASIC',
     PRO = 'PRO',
     ENTERPRISE = 'ENTERPRISE',
+    UNLIMITED = 'UNLIMITED',
 }
 
 export interface PlanInfo {
     id: SubscriptionPlan;
     name: string;
-    quizLimit: number;
+    quizLimit: number | null; // null = ilimitado
     priceId?: string; // Stripe Price ID
     amount?: number; // Preço em centavos (será convertido para reais)
     currency?: string; // Moeda (ex: 'brl')

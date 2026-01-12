@@ -21,7 +21,7 @@ export default function OverridesPage() {
         user_id: '',
         override_type: 'PLAN_LIMITS',
         expires_at: '',
-        metadata: '{}',
+        plan: 'BASIC', // Novo campo para seleção de plano
     });
 
     useEffect(() => {
@@ -43,16 +43,24 @@ export default function OverridesPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            // Construir metadata baseado no tipo de override
+            let metadata = {};
+            if (formData.override_type === 'PLAN_LIMITS') {
+                metadata = { plan: formData.plan };
+            }
+
             await api.post('/admin/user-overrides', {
-                ...formData,
+                user_id: formData.user_id,
+                override_type: formData.override_type,
                 expires_at: formData.expires_at || undefined,
-                metadata: JSON.parse(formData.metadata || '{}'),
+                metadata: metadata,
             });
             setShowForm(false);
-            setFormData({ user_id: '', override_type: 'PLAN_LIMITS', expires_at: '', metadata: '{}' });
+            setFormData({ user_id: '', override_type: 'PLAN_LIMITS', expires_at: '', plan: 'BASIC' });
             fetchOverrides();
         } catch (error) {
             console.error('Erro ao criar override:', error);
+            alert('Erro ao criar override. Verifique se o User ID está correto e se todos os campos obrigatórios estão preenchidos.');
         }
     };
 
@@ -104,6 +112,22 @@ export default function OverridesPage() {
                                 <option value="CUSTOM">Personalizado</option>
                             </select>
                         </div>
+                        {formData.override_type === 'PLAN_LIMITS' && (
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Plano</label>
+                                <select
+                                    value={formData.plan}
+                                    onChange={(e) => setFormData({ ...formData, plan: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded"
+                                    required
+                                >
+                                    <option value="BASIC">Basic (15 quizzes)</option>
+                                    <option value="PRO">Pro (30 quizzes)</option>
+                                    <option value="ENTERPRISE">Enterprise (60 quizzes)</option>
+                                    <option value="UNLIMITED">Ilimitado (sem limite)</option>
+                                </select>
+                            </div>
+                        )}
                         <div>
                             <label className="block text-sm font-medium mb-1">Data de Expiração (deixe vazio para perpétuo)</label>
                             <input
@@ -111,15 +135,6 @@ export default function OverridesPage() {
                                 value={formData.expires_at}
                                 onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
                                 className="w-full px-3 py-2 border rounded"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Metadata (JSON)</label>
-                            <textarea
-                                value={formData.metadata}
-                                onChange={(e) => setFormData({ ...formData, metadata: e.target.value })}
-                                className="w-full px-3 py-2 border rounded font-mono text-sm"
-                                rows={4}
                             />
                         </div>
                         <div className="flex gap-2">
@@ -147,30 +162,42 @@ export default function OverridesPage() {
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuário</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plano</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expira em</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                            {overrides.map((override) => (
-                                <tr key={override.id}>
-                                    <td className="px-6 py-4">{override.user.name} ({override.user.email})</td>
-                                    <td className="px-6 py-4">{override.override_type}</td>
-                                    <td className="px-6 py-4">
-                                        {override.expires_at
-                                            ? new Date(override.expires_at).toLocaleDateString('pt-BR')
-                                            : 'Perpétuo'}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <button
-                                            onClick={() => handleDelete(override.id)}
-                                            className="text-red-600 hover:text-red-800"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
+                            {overrides.map((override) => {
+                                const planName = override.override_type === 'PLAN_LIMITS' && override.metadata?.plan
+                                    ? override.metadata.plan === 'BASIC' ? 'Basic (15 quizzes)'
+                                        : override.metadata.plan === 'PRO' ? 'Pro (30 quizzes)'
+                                        : override.metadata.plan === 'ENTERPRISE' ? 'Enterprise (60 quizzes)'
+                                        : override.metadata.plan === 'UNLIMITED' ? 'Ilimitado'
+                                        : override.metadata.plan
+                                    : '-';
+                                
+                                return (
+                                    <tr key={override.id}>
+                                        <td className="px-6 py-4">{override.user.name} ({override.user.email})</td>
+                                        <td className="px-6 py-4">{override.override_type}</td>
+                                        <td className="px-6 py-4">{planName}</td>
+                                        <td className="px-6 py-4">
+                                            {override.expires_at
+                                                ? new Date(override.expires_at).toLocaleDateString('pt-BR')
+                                                : 'Perpétuo'}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <button
+                                                onClick={() => handleDelete(override.id)}
+                                                className="text-red-600 hover:text-red-800"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

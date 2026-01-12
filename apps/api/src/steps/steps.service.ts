@@ -48,6 +48,20 @@ export class StepsService {
         }
         await this.quizzesService.findOne(userId, quizId); // Ownership check
 
+        // Validar metadata de INPUT steps
+        if (createStepDto.type === 'INPUT') {
+            if (!createStepDto.metadata) {
+                throw new BadRequestException('INPUT steps require metadata with variableName');
+            }
+            const metadata = createStepDto.metadata as any;
+            if (metadata.variableName === undefined || metadata.variableName === '') {
+                throw new BadRequestException('INPUT steps require variableName in metadata');
+            }
+            if (metadata.inputType && !['text', 'number', 'email'].includes(metadata.inputType)) {
+                throw new BadRequestException('INPUT steps require valid inputType (text, number, or email)');
+            }
+        }
+
         const { question, quizId: _, ...stepData } = createStepDto;
 
         const step = await this.prisma.step.create({
@@ -89,6 +103,17 @@ export class StepsService {
 
         // Ownership check via quiz
         await this.quizzesService.findOne(userId, step.quiz_id);
+
+        // Validar metadata de INPUT steps
+        if (step.type === 'INPUT' && updateStepDto.metadata) {
+            const metadata = updateStepDto.metadata as any;
+            if (metadata.variableName === undefined || metadata.variableName === '') {
+                throw new BadRequestException('INPUT steps require variableName in metadata');
+            }
+            if (metadata.inputType && !['text', 'number', 'email'].includes(metadata.inputType)) {
+                throw new BadRequestException('INPUT steps require valid inputType (text, number, or email)');
+            }
+        }
 
         const { question, ...stepData } = updateStepDto;
 

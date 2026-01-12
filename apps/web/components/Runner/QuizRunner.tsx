@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ArrowLeft, ArrowRight, Send, CheckCircle2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@repo/ui";
 import StepRenderer from "./StepRenderer";
+import { interpolateText } from "@/lib/interpolation";
 
 interface Quiz {
     id: string;
@@ -65,6 +66,58 @@ export default function QuizRunner({ slug }: { slug: string }) {
 
     const currentStep = quiz?.steps[currentStepIndex];
 
+    // Extrair variáveis do answers para interpolação
+    const variables = useMemo(() => {
+        const vars: Record<string, any> = {};
+        if (answers && answers.__variables__) {
+            Object.assign(vars, answers.__variables__);
+        }
+        // Também extrair de INPUT steps diretamente do answers
+        if (quiz) {
+            quiz.steps.forEach(step => {
+                if (step.type === 'INPUT' && step.metadata) {
+                    const metadata = step.metadata as any;
+                    const variableName = metadata.variableName;
+                    if (variableName && answers[step.id] !== undefined) {
+                        vars[variableName] = answers[step.id];
+                    }
+                }
+            });
+        }
+        return vars;
+    }, [answers, quiz]);
+
+    // Processar step atual com interpolação
+    const processedStep = useMemo(() => {
+        if (!currentStep) return null;
+        
+        const processed = { ...currentStep };
+        
+        // Interpolar title
+        if (processed.title) {
+            processed.title = interpolateText(processed.title, variables);
+        }
+        
+        // Interpolar description
+        if (processed.description) {
+            processed.description = interpolateText(processed.description, variables);
+        }
+        
+        // Interpolar question text e options
+        if (processed.question) {
+            processed.question = {
+                ...processed.question,
+                text: interpolateText(processed.question.text, variables),
+                options: processed.question.options?.map((opt: any) => ({
+                    ...opt,
+                    text: interpolateText(opt.text, variables),
+                })),
+            };
+        }
+        
+        return processed;
+    }, [currentStep, variables]);
+
     // Auto-complete session if we land on a RESULT step
     // Moved up to follow Rules of Hooks - MUST BE BEFORE ANY RETURN STATEMENT
     useEffect(() => {
@@ -102,40 +155,120 @@ export default function QuizRunner({ slug }: { slug: string }) {
 
         const val = answerValue !== undefined ? answerValue : answers[currentStep.id];
 
-        if (currentStep.type === "QUESTION" && !val) {
-            alert("Por favor, selecione uma resposta");
-            return;
+        // Validar step QUESTION
+        if (currentStep.type === "QUESTION") {
+            const isMultipleChoice = (currentStep.metadata as any)?.multipleChoice === true;
+            
+            if (isMultipleChoice) {
+                // Múltipla escolha: validação de array
+                const selectedArray = Array.isArray(val) ? val : [];
+                const minSelections = (currentStep.metadata as any)?.minSelections ?? 1;
+                const maxSelections = (currentStep.metadata as any)?.maxSelections;
+
+                if (selectedArray.length < minSelections) {
+                    alert(`Por favor, selecione pelo menos ${minSelections} opção${minSelections > 1 ? 'ões' : ''}`);
+                    return;
+                }
+
+                if (maxSelections !== null && maxSelections !== undefined && selectedArray.length > maxSelections) {
+                    alert(`Por favor, selecione no máximo ${maxSelections} opção${maxSelections > 1 ? 'ões' : ''}`);
+                    return;
+                }
+
+                if (selectedArray.length === 0) {
+                    alert("Por favor, selecione pelo menos uma resposta");
+                    return;
+                }
+            } else {
+                // Escolha única: validação de string
+                if (!val) {
+                    alert("Por favor, selecione uma resposta");
+                    return;
+                }
+            }
         }
 
-        // Validar step CAPTURE - pelo menos um campo deve estar preenchido
-        if (currentStep.type === "CAPTURE") {
-            const captureFields = (currentStep.metadata?.captureFields as any) || { name: true, email: true, phone: false };
-            const hasName = captureFields.name !== false && val?.name?.trim();
-            const hasEmail = captureFields.email !== false && val?.email?.trim();
-            const hasPhone = captureFields.phone === true && val?.phone?.trim();
-            
-            if (!hasName && !hasEmail && !hasPhone) {
-                alert("Por favor, preencha pelo menos um dos campos solicitados");
+        // Validar step INPUT - campo deve estar preenchido
+        if (currentStep.type === "INPUT") {
+            if (!val || (typeof val === 'string' && !val.trim())) {
+                alert("Por favor, preencha o campo solicitado");
                 return;
             }
+        }
+
+        // Validar step CAPTURE - todos os campos configurados são obrigatórios
+        if (currentStep.type === "CAPTURE") {
+            const captureFields = (currentStep.metadata?.captureFields as any) || { name: true, email: true, phone: false };
+            const errors: Record<string, string> = {};
+            
+            // Validar nome se configurado
+            if (captureFields.name !== false) {
+                if (!val?.name || !val.name.trim()) {
+                    errors.name = "O campo Nome é obrigatório";
+                }
+            }
+            
+            // Validar email se configurado
+            if (captureFields.email !== false) {
+                if (!val?.email || !val.email.trim()) {
+                    errors.email = "O campo Email é obrigatório";
+                } else {
+                    // Validar formato de email
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(val.email.trim())) {
+                        errors.email = "Por favor, insira um email válido";
+                    }
+                }
+            }
+            
+            // Validar telefone se configurado
+            if (captureFields.phone === true) {
+                if (!val?.phone || !val.phone.trim()) {
+                    errors.phone = "O campo Telefone é obrigatório";
+                }
+            }
+            
+            // Se houver erros, mostrar e impedir avanço
+            if (Object.keys(errors).length > 0) {
+                setValidationErrors(errors);
+                return;
+            }
+            
+            // Limpar erros se validação passou
+            setValidationErrors({});
         }
 
         setIsAdvancing(true);
 
         try {
-            // Limpar erros anteriores quando tentar avançar
-            if (currentStep.type === "CAPTURE") {
-                setValidationErrors({});
-            }
 
-            if (currentStep.type === "QUESTION" && sessionId && val) {
-                await apiFetch(`/sessions/${sessionId}/answers`, {
-                    method: "POST",
-                    body: JSON.stringify({
-                        stepId: currentStep.id,
-                        value: val,
-                    }),
-                });
+            // Salvar resposta para QUESTION e INPUT
+            if ((currentStep.type === "QUESTION" || currentStep.type === "INPUT") && sessionId && val) {
+                // Para múltipla escolha, garantir que seja enviado como array
+                const isMultipleChoice = (currentStep.metadata as any)?.multipleChoice === true;
+                const answerValue = isMultipleChoice 
+                    ? (Array.isArray(val) ? val : [val])
+                    : val;
+
+                try {
+                    await apiFetch(`/sessions/${sessionId}/answers`, {
+                        method: "POST",
+                        body: JSON.stringify({
+                            stepId: currentStep.id,
+                            value: answerValue,
+                        }),
+                    });
+                } catch (error: any) {
+                    // Se for erro de validação do backend (limites), mostrar mensagem
+                    if (error.message && typeof error.message === 'string') {
+                        const errorMsg = error.message.toLowerCase();
+                        if (errorMsg.includes('selecione') || errorMsg.includes('opção')) {
+                            alert(error.message);
+                            return;
+                        }
+                    }
+                    throw error;
+                }
             }
 
             // Se for step CAPTURE e tiver dados, criar/atualizar lead
@@ -167,13 +300,56 @@ export default function QuizRunner({ slug }: { slug: string }) {
                 }
             }
 
-            if (isLastStep) {
-                if (sessionId) {
-                    await apiFetch(`/sessions/${sessionId}/complete`, { method: "POST" });
+            // Determinar próximo step baseado em regras
+            if (sessionId) {
+                try {
+                    const nextStepResponse = await apiFetch<{ stepId: string; stepIndex?: number }>(`/sessions/${sessionId}/next-step?currentStepId=${currentStep.id}`);
+                    
+                    if (nextStepResponse && nextStepResponse.stepId) {
+                        // Encontrar o índice do próximo step
+                        const nextStepIndex = nextStepResponse.stepIndex !== undefined 
+                            ? nextStepResponse.stepIndex 
+                            : quiz.steps.findIndex(s => s.id === nextStepResponse.stepId);
+                        
+                        if (nextStepIndex !== -1 && nextStepIndex < quiz.steps.length) {
+                            setCurrentStepIndex(nextStepIndex);
+                        } else if (nextStepIndex === quiz.steps.length - 1) {
+                            // Último step
+                            await apiFetch(`/sessions/${sessionId}/complete`, { method: "POST" });
+                            setCompleted(true);
+                        } else {
+                            // Fallback: próximo em ordem
+                            if (isLastStep) {
+                                await apiFetch(`/sessions/${sessionId}/complete`, { method: "POST" });
+                                setCompleted(true);
+                            } else {
+                                setCurrentStepIndex(currentStepIndex + 1);
+                            }
+                        }
+                    } else {
+                        // Não há próximo step (quiz termina)
+                        await apiFetch(`/sessions/${sessionId}/complete`, { method: "POST" });
+                        setCompleted(true);
+                    }
+                } catch (error) {
+                    console.error('Error getting next step:', error);
+                    // Fallback: próximo em ordem
+                    if (isLastStep) {
+                        if (sessionId) {
+                            await apiFetch(`/sessions/${sessionId}/complete`, { method: "POST" });
+                        }
+                        setCompleted(true);
+                    } else {
+                        setCurrentStepIndex(currentStepIndex + 1);
+                    }
                 }
-                setCompleted(true);
             } else {
-                setCurrentStepIndex(currentStepIndex + 1);
+                // Fallback se não há sessionId
+                if (isLastStep) {
+                    setCompleted(true);
+                } else {
+                    setCurrentStepIndex(currentStepIndex + 1);
+                }
             }
         } catch (e: any) {
             console.error(e);
@@ -292,8 +468,12 @@ export default function QuizRunner({ slug }: { slug: string }) {
             }
         }
 
-        // Auto-advance logic - only for QUESTION types
-        if (quiz.auto_advance === true && currentStep.type === "QUESTION" && !isAdvancing) {
+        // Auto-advance logic - only for QUESTION types with single choice (not multiple choice)
+        const isMultipleChoice = (currentStep.metadata as any)?.multipleChoice === true;
+        if (quiz.auto_advance === true && 
+            currentStep.type === "QUESTION" && 
+            !isAdvancing &&
+            !isMultipleChoice) {
             setTimeout(() => handleNext(value), 400);
         }
     };
@@ -301,13 +481,18 @@ export default function QuizRunner({ slug }: { slug: string }) {
     // Show result page with CTA if last step is RESULT and completed
     if (completed) {
         const lastStep = quiz.steps[quiz.steps.length - 1];
+        const processedLastStep = {
+            ...lastStep,
+            title: interpolateText(lastStep?.title, variables),
+            description: interpolateText(lastStep?.description, variables),
+        };
         const hasCta = lastStep?.type === "RESULT" && lastStep?.metadata?.cta_text && lastStep?.metadata?.cta_link;
 
         return (
             <div className="min-h-screen bg-gradient-success flex items-center justify-center p-4">
                 <div className="max-w-2xl w-full glass rounded-3xl p-8 text-center animate-scale-in">
                     <StepRenderer
-                        step={lastStep}
+                        step={processedLastStep}
                         value={null}
                         onChange={() => {}}
                         validationErrors={{}}
@@ -339,12 +524,14 @@ export default function QuizRunner({ slug }: { slug: string }) {
 
                     {/* Step Content */}
                     <div className="glass rounded-3xl shadow-2xl p-8 backdrop-blur-2xl">
-                        <StepRenderer
-                            step={currentStep}
-                            value={answers[currentStep?.id || ""]}
-                            onChange={handleAnswerChange}
-                            validationErrors={validationErrors}
-                        />
+                        {processedStep && (
+                            <StepRenderer
+                                step={processedStep}
+                                value={answers[currentStep?.id || ""]}
+                                onChange={handleAnswerChange}
+                                validationErrors={validationErrors}
+                            />
+                        )}
                     </div>
 
                     {/* Navigation - Hide if RESULT step */}

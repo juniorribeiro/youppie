@@ -41,6 +41,11 @@ export class SubscriptionsService {
                 quizLimit: 60,
                 priceId: process.env.STRIPE_PRICE_ID_ENTERPRISE,
             },
+            {
+                id: SubscriptionPlan.UNLIMITED,
+                name: 'Youppie Ilimitado',
+                quizLimit: null, // Ilimitado - não tem priceId, só via overrides
+            },
         ];
 
         // Buscar preços do Stripe se estiver configurado
@@ -63,10 +68,15 @@ export class SubscriptionsService {
         return plans;
     }
 
-    async getPlanLimits(plan: SubscriptionPlan): Promise<number> {
+    async getPlanLimits(plan: SubscriptionPlan): Promise<number | null> {
         const plans = await this.getPlans();
         const planInfo = plans.find((p) => p.id === plan);
-        return planInfo?.quizLimit || 1;
+        // Se quizLimit for null, significa ilimitado
+        // Retornamos null para indicar ilimitado, caso contrário retorna o limite ou 1 como padrão
+        if (planInfo?.quizLimit === null) {
+            return null; // Ilimitado
+        }
+        return planInfo?.quizLimit ?? 1;
     }
 
     async getUserSubscription(userId: string) {
