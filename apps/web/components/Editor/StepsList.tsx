@@ -141,10 +141,44 @@ export default function StepsList({ quizId }: { quizId: string }) {
         })
     );
 
+    // Função helper para verificar quais steps têm ligações no flow visual
+    const getStepsWithConnections = (): Set<string> => {
+        try {
+            const savedLayoutStr = localStorage.getItem(`quiz-flow-layout-${quizId}`);
+            if (!savedLayoutStr) return new Set();
+            
+            const layout = JSON.parse(savedLayoutStr);
+            const connectedSteps = new Set<string>();
+            
+            // Se houver edges salvas, adicionar source e target
+            if (layout.edges && Array.isArray(layout.edges)) {
+                layout.edges.forEach((edge: { source: string; target: string }) => {
+                    connectedSteps.add(edge.source);
+                    connectedSteps.add(edge.target);
+                });
+            }
+            
+            return connectedSteps;
+        } catch {
+            return new Set();
+        }
+    };
+
     const fetchSteps = async () => {
         try {
             const data = await apiFetch<Step[]>(`/steps?quizId=${quizId}`, { token: token! });
-            setSteps(data);
+            
+            // Verificar se há layout e edges salvas
+            const connectedSteps = getStepsWithConnections();
+            const hasLayout = connectedSteps.size > 0;
+            
+            // Se não há layout/edges, mostrar todos os steps
+            // Caso contrário, mostrar apenas os conectados
+            const filteredSteps = hasLayout 
+                ? data.filter(step => connectedSteps.has(step.id))
+                : data;
+            
+            setSteps(filteredSteps);
         } catch (e) {
             console.error(e);
         } finally {
@@ -154,6 +188,27 @@ export default function StepsList({ quizId }: { quizId: string }) {
 
     useEffect(() => {
         if (token) fetchSteps();
+    }, [token, quizId]);
+    
+    // Recarregar quando o layout mudar (polling simples)
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (token) {
+                const connectedSteps = getStepsWithConnections();
+                const hasLayout = connectedSteps.size > 0;
+                // Buscar todos os steps novamente para incluir novos que foram criados pela lista
+                apiFetch<Step[]>(`/steps?quizId=${quizId}`, { token: token! })
+                    .then(data => {
+                        const filteredSteps = hasLayout 
+                            ? data.filter(step => connectedSteps.has(step.id))
+                            : data;
+                        setSteps(filteredSteps);
+                    })
+                    .catch(console.error);
+            }
+        }, 1000);
+        
+        return () => clearInterval(interval);
     }, [token, quizId]);
 
     const addStep = async (type: Step["type"]) => {
@@ -193,16 +248,27 @@ export default function StepsList({ quizId }: { quizId: string }) {
         }
         
         try {
+            // Preparar body baseado no tipo
+            const body: any = {
+                quizId,
+                title: `Nova ${STEP_LABELS[type]}`,
+                type,
+                order: insertOrder,
+            };
+
+            // Para steps INPUT, adicionar metadata padrão
+            if (type === "INPUT") {
+                body.metadata = {
+                    variableName: `input_${Date.now()}`,
+                    inputType: "text",
+                };
+            }
+
             // Criar o novo step
             const newStep = await apiFetch<Step>("/steps", {
                 method: "POST",
                 token: token!,
-                body: JSON.stringify({
-                    quizId,
-                    title: `Nova ${STEP_LABELS[type]}`,
-                    type,
-                    order: insertOrder,
-                }),
+                body: JSON.stringify(body),
             });
             
             // Atualizar orders dos steps afetados (se houver)
@@ -226,6 +292,56 @@ export default function StepsList({ quizId }: { quizId: string }) {
                 setSteps([...updatedSteps, newStep]);
             } else {
                 setSteps([...steps, newStep]);
+            }
+            
+            // Criar ligação sequencial automática (para que o step apareça na lista)
+            // Identificar step anterior (último ou penúltimo se último for RESULT)
+            if (sortedSteps.length > 0) {
+                const lastStep = sortedSteps[sortedSteps.length - 1];
+                let sourceStepId: string;
+                
+                if (lastStep.type === "RESULT") {
+                    // Se o último step é RESULT, ligar ao penúltimo
+                    if (sortedSteps.length > 1) {
+                        sourceStepId = sortedSteps[sortedSteps.length - 2].id;
+                    } else {
+                        // Se só há 1 step (RESULT), não há step anterior para ligar
+                        sourceStepId = "";
+                    }
+                } else {
+                    // Ligar ao último step
+                    sourceStepId = lastStep.id;
+                }
+                
+                // Só criar ligação se houver sourceStepId válido
+                if (sourceStepId) {
+                    // Criar edge sequencial no localStorage
+                    try {
+                        const savedLayoutStr = localStorage.getItem(`quiz-flow-layout-${quizId}`);
+                        let layoutData: any = { nodes: [], version: "1.0", edges: [] };
+                        
+                        if (savedLayoutStr) {
+                            layoutData = JSON.parse(savedLayoutStr);
+                        }
+                        
+                        // Adicionar nova edge sequencial
+                        const existingEdges = layoutData.edges || [];
+                        const newEdge = { source: sourceStepId, target: newStep.id };
+                        
+                        // Verificar se já existe essa edge
+                        const edgeExists = existingEdges.some(
+                            (e: { source: string; target: string }) => 
+                                e.source === sourceStepId && e.target === newStep.id
+                        );
+                        
+                        if (!edgeExists) {
+                            layoutData.edges = [...existingEdges, newEdge];
+                            localStorage.setItem(`quiz-flow-layout-${quizId}`, JSON.stringify(layoutData));
+                        }
+                    } catch (error) {
+                        console.error("Erro ao criar ligação sequencial:", error);
+                    }
+                }
             }
             
             setSelectedStepId(newStep.id);
@@ -371,6 +487,7 @@ export default function StepsList({ quizId }: { quizId: string }) {
                 {selectedStepId ? (
                     <StepEditor
                         stepId={selectedStepId}
+                        quizId={quizId}
                         onUpdate={(updatedStep) => {
                             setSteps(steps.map((s) => (s.id === updatedStep.id ? { ...s, ...updatedStep } : s)));
                         }}

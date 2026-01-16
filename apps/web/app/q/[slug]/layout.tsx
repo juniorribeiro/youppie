@@ -43,18 +43,18 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
 export default async function QuizLayout({ params, children }: LayoutProps) {
     const { slug } = await params;
     
-    // Buscar dados do quiz incluindo tracking do usuário
+    // Buscar dados do quiz incluindo tracking do quiz
     const quiz = await fetchQuizData(slug);
     let trackingData = null;
     
-    if (quiz?.user) {
+    if (quiz) {
         trackingData = {
-            google_analytics_id: quiz.user.google_analytics_id,
-            google_tag_manager_id: quiz.user.google_tag_manager_id,
-            facebook_pixel_id: quiz.user.facebook_pixel_id,
-            tracking_head: quiz.user.tracking_head,
-            tracking_body: quiz.user.tracking_body,
-            tracking_footer: quiz.user.tracking_footer,
+            google_analytics_id: quiz.google_analytics_id,
+            google_tag_manager_id: quiz.google_tag_manager_id,
+            facebook_pixel_id: quiz.facebook_pixel_id,
+            tracking_head: quiz.tracking_head,
+            tracking_body: quiz.tracking_body,
+            tracking_footer: quiz.tracking_footer,
         };
     }
 

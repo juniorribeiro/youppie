@@ -116,16 +116,7 @@ export class QuizzesService {
                         }
                     }
                 },
-                user: {
-                    select: {
-                        google_analytics_id: true,
-                        google_tag_manager_id: true,
-                        facebook_pixel_id: true,
-                        tracking_head: true,
-                        tracking_body: true,
-                        tracking_footer: true,
-                    }
-                }
+                // Remover seleção de tracking do user - agora está no quiz
             }
         });
         if (!quiz) throw new NotFoundException('Quiz not found');
@@ -136,12 +127,31 @@ export class QuizzesService {
     async update(userId: string, id: string, updateQuizDto: UpdateQuizDto) {
         await this.findOne(userId, id); // check ownership
 
-        const { is_published, auto_advance, ...data } = updateQuizDto;
+        const { 
+            is_published, 
+            auto_advance, 
+            google_analytics_id,
+            google_tag_manager_id,
+            facebook_pixel_id,
+            tracking_head,
+            tracking_body,
+            tracking_footer,
+            ...data 
+        } = updateQuizDto;
+
+        // Remover slug se vier no DTO (não deve ser alterado após criação)
+        const { slug, ...dataWithoutSlug } = data as any;
 
         const updateData = {
-            ...data,
+            ...dataWithoutSlug,
             ...(is_published !== undefined && { is_published }),
             ...(auto_advance !== undefined && { auto_advance }),
+            ...(google_analytics_id !== undefined && { google_analytics_id: google_analytics_id || null }),
+            ...(google_tag_manager_id !== undefined && { google_tag_manager_id: google_tag_manager_id || null }),
+            ...(facebook_pixel_id !== undefined && { facebook_pixel_id: facebook_pixel_id || null }),
+            ...(tracking_head !== undefined && { tracking_head: tracking_head || null }),
+            ...(tracking_body !== undefined && { tracking_body: tracking_body || null }),
+            ...(tracking_footer !== undefined && { tracking_footer: tracking_footer || null }),
         };
 
         const result = await this.prisma.quiz.update({

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsDateString, IsObject, ValidateIf, ValidateNested } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsDateString, IsObject, ValidateIf, ValidateNested, IsEmail } from 'class-validator';
 import { OverrideType } from '@prisma/client';
 import { SubscriptionPlan } from '../../subscriptions/dto/subscription.dto';
 import { Type } from 'class-transformer';
@@ -11,7 +11,8 @@ class PlanMetadataDto {
 export class CreateUserOverrideDto {
     @IsString()
     @IsNotEmpty()
-    user_id: string;
+    @IsEmail()
+    user_email: string;
 
     @IsEnum(OverrideType)
     override_type: OverrideType;

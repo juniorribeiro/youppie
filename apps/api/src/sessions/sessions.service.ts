@@ -214,11 +214,24 @@ export class SessionsService {
     /**
      * Extrai variáveis do objeto answers da sessão
      */
-    private extractVariables(answers: any): Record<string, any> {
+    private extractVariables(answers: any, steps?: any[]): Record<string, any> {
         const variables: Record<string, any> = {};
         
+        // Variáveis de INPUT steps
         if (answers && answers.__variables__) {
             Object.assign(variables, answers.__variables__);
+        }
+        
+        // Variáveis de CAPTURE steps (name, email, phone)
+        if (steps && answers) {
+            steps.forEach(step => {
+                if (step.type === 'CAPTURE' && answers[step.id]) {
+                    const captureData = answers[step.id] as any;
+                    if (captureData.name) variables.name = captureData.name;
+                    if (captureData.email) variables.email = captureData.email;
+                    if (captureData.phone) variables.phone = captureData.phone;
+                }
+            });
         }
 
         return variables;
@@ -292,7 +305,7 @@ export class SessionsService {
         if (!currentStep) throw new NotFoundException('Current step not found');
 
         const answers = (session.answers as any) || {};
-        const variables = this.extractVariables(answers);
+        const variables = this.extractVariables(answers, session.quiz.steps);
 
         // Se o step atual tem regras, avaliar
         if (currentStep.metadata) {
@@ -310,12 +323,57 @@ export class SessionsService {
                     // Executar ações
                     let nextStepId: string | null = null;
                     let scoreDelta = 0;
+                    let message: string | undefined;
+                    let redirect: string | undefined;
 
+                    // Verificar se há ações de prioridade alta primeiro (end, redirect)
+                    const hasEnd = evaluationResult.actions.some(a => a.type === 'end');
+                    const hasRedirect = evaluationResult.actions.find(a => a.type === 'redirect');
+
+                    // Se há redirect, encerrar imediatamente
+                    if (hasRedirect && hasRedirect.value && typeof hasRedirect.value === 'string') {
+                        return {
+                            stepId: '',
+                            redirect: hasRedirect.value,
+                            actions: evaluationResult.actions,
+                        };
+                    }
+
+                    // Se há end, encerrar imediatamente
+                    if (hasEnd) {
+                        return null; // Quiz termina
+                    }
+
+                    // Processar outras ações
                     for (const action of evaluationResult.actions) {
                         switch (action.type) {
                             case 'goto':
                                 if (action.target) {
-                                    nextStepId = action.target;
+                                    // Validar se stepId existe
+                                    const targetStep = session.quiz.steps.find(s => s.id === action.target);
+                                    if (targetStep) {
+                                        nextStepId = action.target;
+                                    } else {
+                                        console.warn(`Step ID ${action.target} not found in quiz. Using fallback.`);
+                                    }
+                                }
+                                break;
+                            case 'skip':
+                                // Pular steps: value pode ser número ou stepId
+                                if (typeof action.value === 'number') {
+                                    // Pular N steps
+                                    const skipCount = action.value;
+                                    const currentIndex = session.quiz.steps.findIndex(s => s.id === currentStepId);
+                                    const targetIndex = currentIndex + skipCount;
+                                    if (targetIndex >= 0 && targetIndex < session.quiz.steps.length) {
+                                        nextStepId = session.quiz.steps[targetIndex].id;
+                                    }
+                                } else if (typeof action.value === 'string') {
+                                    // Pular para stepId específico
+                                    const targetStep = session.quiz.steps.find(s => s.id === action.value);
+                                    if (targetStep) {
+                                        nextStepId = targetStep.id;
+                                    }
                                 }
                                 break;
                             case 'score':
@@ -328,9 +386,21 @@ export class SessionsService {
                                     await this.setVariable(sessionId, action.target, action.value);
                                 }
                                 break;
+                            case 'message':
+                                // Mensagem será retornada na resposta para exibir no frontend
+                                if (action.value && typeof action.value === 'string') {
+                                    message = action.value;
+                                }
+                                break;
+                            case 'redirect':
+                                // Já tratado acima, mas mantido para clareza
+                                if (action.value && typeof action.value === 'string') {
+                                    redirect = action.value;
+                                }
+                                break;
                             case 'end':
-                                return null; // Quiz termina
-                            // Outros tipos de ação podem ser implementados aqui
+                                // Já tratado acima
+                                break;
                         }
                     }
 
@@ -338,9 +408,16 @@ export class SessionsService {
                     if (scoreDelta !== 0) {
                         await this.updateScore(sessionId, scoreDelta);
                         const updatedSession = await this.getSession(sessionId);
+                        const finalStepId = nextStepId || this.getNextStepInOrder(session.quiz.steps, currentStepId)?.id || '';
+                        const finalStep = session.quiz.steps.find(s => s.id === finalStepId);
+                        const stepIndex = finalStep ? session.quiz.steps.indexOf(finalStep) : undefined;
+                        
                         return {
-                            stepId: nextStepId || this.getNextStepInOrder(session.quiz.steps, currentStepId)?.id || '',
+                            stepId: finalStepId,
+                            stepIndex,
                             score: (updatedSession as any).score,
+                            message,
+                            redirect,
                             actions: evaluationResult.actions,
                         };
                     }
@@ -353,6 +430,23 @@ export class SessionsService {
                                 stepId: nextStepId,
                                 stepIndex,
                                 score: session.score,
+                                message,
+                                redirect,
+                                actions: evaluationResult.actions,
+                            };
+                        }
+                    }
+
+                    // Se não há nextStepId mas há message, retornar com próximo step em ordem
+                    if (message) {
+                        const nextStep = this.getNextStepInOrder(session.quiz.steps, currentStepId);
+                        if (nextStep) {
+                            const stepIndex = session.quiz.steps.indexOf(nextStep);
+                            return {
+                                stepId: nextStep.id,
+                                stepIndex,
+                                score: session.score,
+                                message,
                                 actions: evaluationResult.actions,
                             };
                         }

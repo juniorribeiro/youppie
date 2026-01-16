@@ -44,31 +44,74 @@ export class RulesService {
 
     /**
      * Compara valores baseado no operador
+     * Suporta arrays para múltipla escolha
      */
     private compareValues(left: any, operator: string, right: any): boolean {
+        // Converter para arrays para facilitar comparação
+        const leftArray = Array.isArray(left) ? left : (left !== undefined && left !== null ? [left] : []);
+        const rightArray = Array.isArray(right) ? right : (right !== undefined && right !== null ? [right] : []);
+
+        // Arrays vazios retornam false para comparações
+        if (leftArray.length === 0 && operator !== '==') {
+            return false;
+        }
+
         switch (operator) {
             case '==':
+                // Para arrays: verificar se algum valor do left está no right
+                if (Array.isArray(left) || Array.isArray(right)) {
+                    return leftArray.some(l => rightArray.includes(l));
+                }
                 return left == right; // Use == para permitir coerção de tipo
             case '!=':
+                // Para arrays: verificar se nenhum valor do left está no right
+                if (Array.isArray(left) || Array.isArray(right)) {
+                    return !leftArray.some(l => rightArray.includes(l));
+                }
                 return left != right;
             case '>':
-                return Number(left) > Number(right);
+                // Para operadores numéricos, usar primeiro valor se for array
+                const leftNum = Array.isArray(left) ? Number(left[0]) : Number(left);
+                const rightNum = Array.isArray(right) ? Number(right[0]) : Number(right);
+                if (isNaN(leftNum) || isNaN(rightNum)) return false;
+                return leftNum > rightNum;
             case '<':
-                return Number(left) < Number(right);
+                const leftNumLt = Array.isArray(left) ? Number(left[0]) : Number(left);
+                const rightNumLt = Array.isArray(right) ? Number(right[0]) : Number(right);
+                if (isNaN(leftNumLt) || isNaN(rightNumLt)) return false;
+                return leftNumLt < rightNumLt;
             case '>=':
-                return Number(left) >= Number(right);
+                const leftNumGte = Array.isArray(left) ? Number(left[0]) : Number(left);
+                const rightNumGte = Array.isArray(right) ? Number(right[0]) : Number(right);
+                if (isNaN(leftNumGte) || isNaN(rightNumGte)) return false;
+                return leftNumGte >= rightNumGte;
             case '<=':
-                return Number(left) <= Number(right);
+                const leftNumLte = Array.isArray(left) ? Number(left[0]) : Number(left);
+                const rightNumLte = Array.isArray(right) ? Number(right[0]) : Number(right);
+                if (isNaN(leftNumLte) || isNaN(rightNumLte)) return false;
+                return leftNumLte <= rightNumLte;
             case 'in':
+                // left deve estar completamente no array right
                 if (!Array.isArray(right)) {
                     return false;
                 }
-                return right.includes(left);
+                // Se left é array, todos os valores devem estar em right
+                if (Array.isArray(left)) {
+                    return leftArray.every(l => rightArray.includes(l));
+                }
+                // Se left é valor único, deve estar em right
+                return rightArray.includes(left);
             case 'notIn':
+                // left não deve estar no array right
                 if (!Array.isArray(right)) {
-                    return false;
+                    return true; // Se right não é array, left não está nele
                 }
-                return !right.includes(left);
+                // Se left é array, nenhum valor deve estar em right
+                if (Array.isArray(left)) {
+                    return !leftArray.some(l => rightArray.includes(l));
+                }
+                // Se left é valor único, não deve estar em right
+                return !rightArray.includes(left);
             default:
                 return false;
         }

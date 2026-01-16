@@ -18,7 +18,7 @@ export default function OverridesPage() {
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [formData, setFormData] = useState({
-        user_id: '',
+        user_email: '',
         override_type: 'PLAN_LIMITS',
         expires_at: '',
         plan: 'BASIC', // Novo campo para seleção de plano
@@ -50,17 +50,18 @@ export default function OverridesPage() {
             }
 
             await api.post('/admin/user-overrides', {
-                user_id: formData.user_id,
+                user_email: formData.user_email,
                 override_type: formData.override_type,
                 expires_at: formData.expires_at || undefined,
                 metadata: metadata,
             });
             setShowForm(false);
-            setFormData({ user_id: '', override_type: 'PLAN_LIMITS', expires_at: '', plan: 'BASIC' });
+            setFormData({ user_email: '', override_type: 'PLAN_LIMITS', expires_at: '', plan: 'BASIC' });
             fetchOverrides();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao criar override:', error);
-            alert('Erro ao criar override. Verifique se o User ID está correto e se todos os campos obrigatórios estão preenchidos.');
+            const errorMessage = error.response?.data?.message || error.message || 'Erro ao criar override. Verifique se o e-mail está correto e se todos os campos obrigatórios estão preenchidos.';
+            alert(errorMessage);
         }
     };
 
@@ -91,13 +92,14 @@ export default function OverridesPage() {
                 <div className="bg-white rounded-lg shadow p-6 mb-6">
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium mb-1">User ID</label>
+                            <label className="block text-sm font-medium mb-1">E-mail</label>
                             <input
-                                type="text"
-                                value={formData.user_id}
-                                onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
+                                type="email"
+                                value={formData.user_email}
+                                onChange={(e) => setFormData({ ...formData, user_email: e.target.value })}
                                 className="w-full px-3 py-2 border rounded"
                                 required
+                                placeholder="usuario@exemplo.com"
                             />
                         </div>
                         <div>
@@ -121,10 +123,11 @@ export default function OverridesPage() {
                                     className="w-full px-3 py-2 border rounded"
                                     required
                                 >
-                                    <option value="BASIC">Basic (15 quizzes)</option>
-                                    <option value="PRO">Pro (30 quizzes)</option>
-                                    <option value="ENTERPRISE">Enterprise (60 quizzes)</option>
-                                    <option value="UNLIMITED">Ilimitado (sem limite)</option>
+                                    <option value="FREE">Free (1 quiz)</option>
+                                    <option value="BASIC">Basic (3 quizzes)</option>
+                                    <option value="PRO">Pro (7 quizzes)</option>
+                                    <option value="PREMIUM">Premium (15 quizzes)</option>
+                                    <option value="ENTERPRISE">Enterprise (30 quizzes)</option>
                                 </select>
                             </div>
                         )}
@@ -170,10 +173,11 @@ export default function OverridesPage() {
                         <tbody className="divide-y divide-gray-200">
                             {overrides.map((override) => {
                                 const planName = override.override_type === 'PLAN_LIMITS' && override.metadata?.plan
-                                    ? override.metadata.plan === 'BASIC' ? 'Basic (15 quizzes)'
-                                        : override.metadata.plan === 'PRO' ? 'Pro (30 quizzes)'
-                                        : override.metadata.plan === 'ENTERPRISE' ? 'Enterprise (60 quizzes)'
-                                        : override.metadata.plan === 'UNLIMITED' ? 'Ilimitado'
+                                    ? override.metadata.plan === 'FREE' ? 'Free (1 quiz)'
+                                        : override.metadata.plan === 'BASIC' ? 'Basic (3 quizzes)'
+                                        : override.metadata.plan === 'PRO' ? 'Pro (7 quizzes)'
+                                        : override.metadata.plan === 'PREMIUM' ? 'Premium (15 quizzes)'
+                                        : override.metadata.plan === 'ENTERPRISE' ? 'Enterprise (30 quizzes)'
                                         : override.metadata.plan
                                     : '-';
                                 

@@ -28,7 +28,7 @@ export default function RegisterForm() {
             });
 
             setSuccess(true);
-            setTimeout(() => router.push("/auth/login"), 1500);
+            setTimeout(() => router.push("/"), 1500);
         } catch (err: any) {
             setError(err.message || "Erro ao criar conta");
         } finally {
@@ -142,7 +142,7 @@ export default function RegisterForm() {
                     <div className="mt-6 text-center">
                         <p className="text-gray-600 text-sm">
                             Já tem uma conta?{" "}
-                            <Link href="/auth/login" className="font-semibold text-primary-600 hover:text-primary-700 transition-colors">
+                            <Link href="/" className="font-semibold text-primary-600 hover:text-primary-700 transition-colors">
                                 Fazer login
                             </Link>
                         </p>

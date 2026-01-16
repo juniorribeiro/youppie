@@ -30,4 +30,28 @@ export class UpdateQuizDto {
     @IsBoolean()
     @IsOptional()
     auto_advance?: boolean;
+    
+    @IsString()
+    @IsOptional()
+    google_analytics_id?: string;
+    
+    @IsString()
+    @IsOptional()
+    google_tag_manager_id?: string;
+    
+    @IsString()
+    @IsOptional()
+    facebook_pixel_id?: string;
+    
+    @IsString()
+    @IsOptional()
+    tracking_head?: string;
+    
+    @IsString()
+    @IsOptional()
+    tracking_body?: string;
+    
+    @IsString()
+    @IsOptional()
+    tracking_footer?: string;
 }

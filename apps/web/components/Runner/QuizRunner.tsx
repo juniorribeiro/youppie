@@ -303,7 +303,26 @@ export default function QuizRunner({ slug }: { slug: string }) {
             // Determinar próximo step baseado em regras
             if (sessionId) {
                 try {
-                    const nextStepResponse = await apiFetch<{ stepId: string; stepIndex?: number }>(`/sessions/${sessionId}/next-step?currentStepId=${currentStep.id}`);
+                    const nextStepResponse = await apiFetch<{ 
+                        stepId: string; 
+                        stepIndex?: number;
+                        message?: string;
+                        redirect?: string;
+                        score?: number;
+                        actions?: Array<{ type: string; value?: any; target?: string }>;
+                    }>(`/sessions/${sessionId}/next-step?currentStepId=${currentStep.id}`);
+                    
+                    // Tratar redirect (encerra quiz e redireciona)
+                    if (nextStepResponse.redirect) {
+                        await apiFetch(`/sessions/${sessionId}/complete`, { method: "POST" }).catch(() => {});
+                        window.location.href = nextStepResponse.redirect;
+                        return;
+                    }
+                    
+                    // Tratar message (exibir alerta)
+                    if (nextStepResponse.message) {
+                        alert(nextStepResponse.message);
+                    }
                     
                     if (nextStepResponse && nextStepResponse.stepId) {
                         // Encontrar o índice do próximo step

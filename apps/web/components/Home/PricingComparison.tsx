@@ -43,23 +43,12 @@ export default function PricingComparison() {
         }
     };
 
-    const formatPrice = (amount?: number, currency?: string) => {
-        if (!amount) return "Grátis";
-        const formatter = new Intl.NumberFormat("pt-BR", {
-            style: "currency",
-            currency: currency?.toUpperCase() || "BRL",
-        });
-        return formatter.format(amount);
-    };
-
     const features = [
         { name: "Número de Quizzes", key: "quizLimit" },
         { name: "Analytics Completo", all: true },
         { name: "Captura de Leads", all: true },
         { name: "Exportação de Dados", all: true },
-        { name: "Suporte por Email", all: true },
-        { name: "Personalização Avançada", free: false },
-        { name: "API Access", free: false, basic: false },
+        { name: "Suporte", all: true },
     ];
 
     return (
@@ -83,26 +72,18 @@ export default function PricingComparison() {
                                     <th 
                                         key={plan.id} 
                                         className={`text-center p-4 font-semibold text-gray-700 relative ${
-                                            plan.id === "PRO" 
+                                            plan.id === "PREMIUM" 
                                                 ? "bg-primary-50 border-2 border-primary-500 rounded-t-lg" 
                                                 : ""
                                         }`}
                                     >
                                         <div className="flex flex-col items-center pt-4">
-                                            {plan.id === "PRO" && (
+                                            {plan.id === "PREMIUM" && (
                                                 <span className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-primary-600 text-white text-xs font-bold px-4 py-1.5 rounded-full whitespace-nowrap z-10 shadow-lg">
                                                     Recomendado
                                                 </span>
                                             )}
                                             <span className="text-lg">{plan.name}</span>
-                                            <span className="text-2xl font-bold text-primary-600 mt-2">
-                                                {formatPrice(plan.amount, plan.currency)}
-                                            </span>
-                                            {plan.interval && (
-                                                <span className="text-sm text-gray-500">
-                                                    /{plan.interval === "month" ? "mês" : plan.interval}
-                                                </span>
-                                            )}
                                         </div>
                                     </th>
                                 ))}
@@ -118,17 +99,13 @@ export default function PricingComparison() {
                                             included = true;
                                         } else if (feature.key === "quizLimit") {
                                             included = true; // Mostrar número
-                                        } else if (feature.free === false) {
-                                            included = plan.id !== "FREE";
-                                        } else if (feature.basic === false) {
-                                            included = plan.id === "PRO" || plan.id === "ENTERPRISE";
                                         }
 
                                         return (
                                             <td 
                                                 key={plan.id} 
                                                 className={`p-4 text-center ${
-                                                    plan.id === "PRO" ? "bg-primary-50" : ""
+                                                    plan.id === "PREMIUM" ? "bg-primary-50" : ""
                                                 }`}
                                             >
                                                 {feature.key === "quizLimit" ? (
@@ -150,7 +127,7 @@ export default function PricingComparison() {
                                 {plans.map((plan) => (
                                     <td key={plan.id} className="p-4 text-center">
                                         <Button
-                                            variant={plan.id === "PRO" ? "primary" : "outline"}
+                                            variant={plan.id === "PREMIUM" ? "primary" : "outline"}
                                             onClick={() => handleSelectPlan(plan.id)}
                                             className="w-full max-w-[180px] h-12"
                                         >

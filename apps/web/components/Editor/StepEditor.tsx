@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Trash2, Plus, Save, Sparkles, Upload, X, Image as ImageIcon } from "lucide-react";
+import { useEffect, useState, useImperativeHandle, forwardRef } from "react";
+import { Trash2, Plus, Save, Sparkles, Upload, X, Image as ImageIcon, ChevronDown, ChevronUp, Code, Edit } from "lucide-react";
 import { Button, Input, Card, CardContent, CardHeader, CardTitle } from "@repo/ui";
 import { apiFetch } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
@@ -34,18 +34,70 @@ interface StepDetail {
     };
 }
 
-export default function StepEditor({
-    stepId,
-    onUpdate,
-}: {
+interface StepList {
+    id: string;
+    title: string;
+    type: string;
+    order: number;
+    question?: {
+        options?: Array<{ value: string; text: string }>;
+    };
+}
+
+// Hook helper para gerenciar placeholders dinâmicos
+function usePlaceholder(originalPlaceholder: string) {
+    const [focused, setFocused] = useState(false);
+    const placeholder = focused ? "" : originalPlaceholder;
+    
+    return {
+        placeholder,
+        onFocus: () => setFocused(true),
+        onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+            if (!e.target.value) {
+                setFocused(false);
+            }
+        },
+    };
+}
+
+export interface StepEditorRef {
+    save: () => Promise<void>;
+}
+
+const StepEditor = forwardRef<StepEditorRef, {
     stepId: string;
+    quizId: string;
     onUpdate: (s: any) => void;
-}) {
+}>(({
+    stepId,
+    quizId,
+    onUpdate,
+}, ref) => {
     const token = useAuthStore((state) => state.token);
     const [step, setStep] = useState<StepDetail | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [rulesEditMode, setRulesEditMode] = useState<'visual' | 'json'>('visual');
+    const [rulesJsonError, setRulesJsonError] = useState<string | null>(null);
+    const [quizSteps, setQuizSteps] = useState<StepList[]>([]);
+    
+    // Placeholders dinâmicos para campos
+    const optionPlaceholder = usePlaceholder("Texto da opção");
+    const minScorePlaceholder = usePlaceholder("1");
+    const maxScorePlaceholder = usePlaceholder("Sem limite");
+    const variableNamePlaceholder = usePlaceholder("Ex: nome, idade, peso");
+    const ctaTextPlaceholder = usePlaceholder("Ex: Comprar Agora, Ver Resultados");
+    const ctaLinkPlaceholder = usePlaceholder("Ex: https://checkout.kiwify.com.br/...");
+    const conditionVariablePlaceholder = usePlaceholder("Nome da variável");
+    const conditionValuePlaceholder = usePlaceholder("Valor");
+    const actionSkipPlaceholder = usePlaceholder("ou número");
+    const actionVariableNamePlaceholder = usePlaceholder("Nome da variável");
+    const actionVariableValuePlaceholder = usePlaceholder("Valor");
+    const actionScorePlaceholder = usePlaceholder("Pontos (número)");
+    const actionMessagePlaceholder = usePlaceholder("Texto da mensagem");
+    const actionRedirectPlaceholder = usePlaceholder("URL");
+    const rulesJsonPlaceholder = usePlaceholder('[\n  {\n    "id": "rule1",\n    "priority": 1,\n    "logic": "AND",\n    "conditions": [\n      {\n        "type": "answer",\n        "source": "stepId",\n        "operator": "==",\n        "value": "opcao1"\n      }\n    ],\n    "actions": [\n      {\n        "type": "goto",\n        "target": "nextStepId"\n      }\n    ]\n  }\n]');
 
     // Helper function to convert absolute URL to relative path when from API
     const normalizeImageUrl = (url: string | null): string => {
@@ -71,6 +123,15 @@ export default function StepEditor({
                 .finally(() => setLoading(false));
         }
     }, [stepId, token]);
+
+    // Buscar steps do quiz
+    useEffect(() => {
+        if (quizId && token) {
+            apiFetch<StepList[]>(`/steps?quizId=${quizId}`, { token })
+                .then(setQuizSteps)
+                .catch(console.error);
+        }
+    }, [quizId, token]);
 
     const handleImageUpload = async (file: File) => {
         if (!token) return;
@@ -110,6 +171,66 @@ export default function StepEditor({
     };
 
     const handleSave = async () => {
+        // Validar regras antes de salvar
+        const rules = (step!.metadata as any)?.rules || [];
+        if (Array.isArray(rules) && rules.length > 0) {
+            const errors: string[] = [];
+            
+            rules.forEach((rule: any, ruleIndex: number) => {
+                // Validar condições
+                if (rule.conditions && Array.isArray(rule.conditions)) {
+                    rule.conditions.forEach((condition: any, condIndex: number) => {
+                        if (!condition.type || (condition.type !== 'answer' && condition.type !== 'variable')) {
+                            errors.push(`Regra ${ruleIndex + 1}, Condição ${condIndex + 1}: Tipo inválido (deve ser 'answer' ou 'variable')`);
+                        }
+                        if (!condition.source || condition.source.trim() === '') {
+                            errors.push(`Regra ${ruleIndex + 1}, Condição ${condIndex + 1}: Source não pode estar vazio`);
+                        }
+                        if (!condition.operator) {
+                            errors.push(`Regra ${ruleIndex + 1}, Condição ${condIndex + 1}: Operador não pode estar vazio`);
+                        }
+                        if (condition.value === undefined || condition.value === null) {
+                            errors.push(`Regra ${ruleIndex + 1}, Condição ${condIndex + 1}: Valor não pode estar vazio`);
+                        }
+                    });
+                }
+                
+                // Validar ações
+                if (rule.actions && Array.isArray(rule.actions)) {
+                    rule.actions.forEach((action: any, actionIndex: number) => {
+                        if (!action.type) {
+                            errors.push(`Regra ${ruleIndex + 1}, Ação ${actionIndex + 1}: Tipo não pode estar vazio`);
+                        }
+                        
+                        // Validar campos específicos por tipo de ação
+                        if (action.type === 'goto' || action.type === 'setVariable') {
+                            if (!action.target || action.target.trim() === '') {
+                                errors.push(`Regra ${ruleIndex + 1}, Ação ${actionIndex + 1}: ${action.type === 'goto' ? 'Step ID' : 'Nome da variável'} não pode estar vazio`);
+                            }
+                        }
+                        if (action.type === 'skip' && !action.value && !action.target) {
+                            errors.push(`Regra ${ruleIndex + 1}, Ação ${actionIndex + 1}: Valor ou target necessário para skip`);
+                        }
+                        if (action.type === 'score' && (typeof action.value !== 'number')) {
+                            errors.push(`Regra ${ruleIndex + 1}, Ação ${actionIndex + 1}: Valor deve ser um número para score`);
+                        }
+                        if (action.type === 'message' && (!action.value || typeof action.value !== 'string')) {
+                            errors.push(`Regra ${ruleIndex + 1}, Ação ${actionIndex + 1}: Mensagem não pode estar vazia`);
+                        }
+                        if (action.type === 'redirect' && (!action.value || typeof action.value !== 'string')) {
+                            errors.push(`Regra ${ruleIndex + 1}, Ação ${actionIndex + 1}: URL de redirecionamento não pode estar vazia`);
+                        }
+                    });
+                }
+            });
+            
+            if (errors.length > 0) {
+                alert(`Erros de validação nas regras:\n\n${errors.join('\n')}\n\nPor favor, corrija antes de salvar.`);
+                setSaving(false);
+                return;
+            }
+        }
+        
         setSaving(true);
 
         try {
@@ -135,13 +256,18 @@ export default function StepEditor({
 
             setStep(updated);
             onUpdate(updated);
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            alert("Falha ao salvar");
+            alert(e.message || "Falha ao salvar");
         } finally {
             setSaving(false);
         }
     };
+
+    // Expor função save via ref
+    useImperativeHandle(ref, () => ({
+        save: handleSave,
+    }), [step, stepId, token, onUpdate]);
 
     if (loading || !step) {
         return (
@@ -273,7 +399,7 @@ export default function StepEditor({
                                         {idx + 1}
                                     </div>
                                     <Input
-                                        placeholder="Texto da opção"
+                                        placeholder={optionPlaceholder.placeholder}
                                         value={opt.text}
                                         onChange={(e) => {
                                             const newOpts = [...step.question!.options];
@@ -281,6 +407,8 @@ export default function StepEditor({
                                             newOpts[idx].value = e.target.value;
                                             setStep({ ...step, question: { ...step.question!, options: newOpts } });
                                         }}
+                                        onFocus={optionPlaceholder.onFocus}
+                                        onBlur={optionPlaceholder.onBlur}
                                         className="bg-white"
                                     />
                                     <Button
@@ -359,8 +487,10 @@ export default function StepEditor({
                                                         },
                                                     });
                                                 }}
+                                                onFocus={minScorePlaceholder.onFocus}
+                                                onBlur={minScorePlaceholder.onBlur}
+                                                placeholder={minScorePlaceholder.placeholder}
                                                 className="bg-white"
-                                                placeholder="1"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -440,46 +570,6 @@ export default function StepEditor({
                                 );
                             })}
                         </div>
-
-                        {/* Editor de Regras Condicionais */}
-                        <div className="mt-6 pt-6 border-t border-primary-200 space-y-4">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Sparkles className="h-5 w-5 text-primary-600" />
-                                <h3 className="font-semibold text-primary-900">Regras Condicionais</h3>
-                            </div>
-                            <p className="text-sm text-gray-600 mb-4">
-                                Configure regras que determinam o próximo step baseado em respostas e variáveis. 
-                                Use o formato JSON abaixo.
-                            </p>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-gray-700">Regras (JSON)</label>
-                                <textarea
-                                    value={JSON.stringify((step.metadata as any)?.rules || [], null, 2)}
-                                    onChange={(e) => {
-                                        try {
-                                            const rules = JSON.parse(e.target.value);
-                                            const currentMetadata = step.metadata || {};
-                                            setStep({
-                                                ...step,
-                                                metadata: {
-                                                    ...currentMetadata,
-                                                    rules: rules,
-                                                },
-                                            });
-                                        } catch (err) {
-                                            // Invalid JSON, não atualizar
-                                        }
-                                    }}
-                                    className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white font-mono text-sm focus:outline-none focus:border-primary-500"
-                                    rows={10}
-                                    placeholder='[\n  {\n    "id": "rule1",\n    "conditions": [\n      {\n        "type": "answer",\n        "source": "stepId",\n        "operator": "==",\n        "value": "opcao1"\n      }\n    ],\n    "actions": [\n      {\n        "type": "goto",\n        "target": "nextStepId"\n      }\n    ]\n  }\n]'
-                                />
-                                <p className="text-xs text-gray-500">
-                                    Formato: array de regras. Cada regra tem conditions (array) e actions (array).
-                                    Operadores: ==, !=, &gt;, &lt;, &gt;=, &lt;=, in, notIn
-                                </p>
-                            </div>
-                        </div>
                     </div>
                 )}
                 {step.type === "INPUT" && (
@@ -500,7 +590,9 @@ export default function StepEditor({
                                         ...step,
                                         metadata: { ...step.metadata, variableName: e.target.value }
                                     })}
-                                    placeholder="Ex: nome, idade, peso"
+                                    onFocus={variableNamePlaceholder.onFocus}
+                                    onBlur={variableNamePlaceholder.onBlur}
+                                    placeholder={variableNamePlaceholder.placeholder}
                                     className="bg-white"
                                 />
                                 <p className="text-xs text-gray-500">
@@ -557,7 +649,9 @@ export default function StepEditor({
                                     ...step,
                                     metadata: { ...step.metadata, cta_link: e.target.value }
                                 })}
-                                placeholder="Ex: https://checkout.kiwify.com.br/..."
+                                onFocus={ctaLinkPlaceholder.onFocus}
+                                onBlur={ctaLinkPlaceholder.onBlur}
+                                placeholder={ctaLinkPlaceholder.placeholder}
                                 className="bg-white"
                             />
                             <p className="text-xs text-gray-500">
@@ -566,7 +660,696 @@ export default function StepEditor({
                         </div>
                     </div>
                 )}
+
+                {/* Editor de Regras Condicionais - para todos os steps */}
+                <div className="mt-6 pt-6 border-t border-primary-200 space-y-4">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                            <Sparkles className="h-5 w-5 text-primary-600" />
+                            <h3 className="font-semibold text-primary-900">Regras Condicionais</h3>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setRulesEditMode('visual')}
+                                className={`px-3 py-1 text-sm rounded ${rulesEditMode === 'visual' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`}
+                            >
+                                <Edit className="h-4 w-4 inline mr-1" />
+                                Visual
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setRulesEditMode('json')}
+                                className={`px-3 py-1 text-sm rounded ${rulesEditMode === 'json' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`}
+                            >
+                                <Code className="h-4 w-4 inline mr-1" />
+                                JSON
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {rulesEditMode === 'visual' ? (
+                        <div className="space-y-4">
+                            <p className="text-sm text-gray-600 mb-4">
+                                Configure regras que determinam o próximo step baseado em respostas e variáveis.
+                            </p>
+                            {((step.metadata as any)?.rules || []).length === 0 ? (
+                                <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                                    <p className="text-gray-500 mb-4">Nenhuma regra configurada</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const currentMetadata = step.metadata || {};
+                                            const currentRules = (currentMetadata as any).rules || [];
+                                            const newRule = {
+                                                id: `rule-${Date.now()}`,
+                                                priority: currentRules.length + 1,
+                                                logic: 'AND' as const,
+                                                conditions: [],
+                                                actions: [],
+                                            };
+                                            setStep({
+                                                ...step,
+                                                metadata: {
+                                                    ...currentMetadata,
+                                                    rules: [...currentRules, newRule],
+                                                },
+                                            });
+                                        }}
+                                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2 mx-auto"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                        Adicionar Regra
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {((step.metadata as any)?.rules || []).map((rule: any, ruleIndex: number) => {
+                                        // Encontrar step selecionado para condições
+                                        const getSourceStep = (condition: any) => {
+                                            if (condition.type === 'answer' && condition.source) {
+                                                // Se for o step atual, usar os dados do step
+                                                if (condition.source === step.id && step) {
+                                                    return {
+                                                        id: step.id,
+                                                        title: step.title,
+                                                        type: step.type,
+                                                        question: step.question ? {
+                                                            options: step.question.options || []
+                                                        } : undefined
+                                                    };
+                                                }
+                                                // Caso contrário, buscar nos quizSteps
+                                                return quizSteps.find(s => s.id === condition.source);
+                                            }
+                                            return null;
+                                        };
+
+                                        return (
+                                            <div key={rule.id || ruleIndex} className="border-2 border-gray-200 rounded-lg p-4 bg-white">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h4 className="font-semibold text-gray-800">Regra {ruleIndex + 1}</h4>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const currentMetadata = step.metadata || {};
+                                                            const currentRules = (currentMetadata as any).rules || [];
+                                                            const newRules = currentRules.filter((r: any, i: number) => i !== ruleIndex);
+                                                            setStep({
+                                                                ...step,
+                                                                metadata: {
+                                                                    ...currentMetadata,
+                                                                    rules: newRules,
+                                                                },
+                                                            });
+                                                        }}
+                                                        className="text-red-600 hover:text-red-800"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                                
+                                                {/* Condições */}
+                                                <div className="mb-4">
+                                                    <label className="text-sm font-semibold text-gray-700 mb-2 block">Condições</label>
+                                                    <div className="space-y-2">
+                                                        {rule.conditions?.length === 0 && (
+                                                            <p className="text-xs text-gray-500 italic">Nenhuma condição</p>
+                                                        )}
+                                                        {rule.conditions?.map((condition: any, condIndex: number) => {
+                                                            const sourceStep = getSourceStep(condition);
+                                                            const shouldShowValueDropdown = sourceStep?.type === 'QUESTION' && sourceStep?.question?.options && sourceStep.question.options.length > 0;
+
+                                                            return (
+                                                                <div key={condIndex} className="flex gap-2 items-start p-2 bg-gray-50 rounded">
+                                                                    <select
+                                                                        value={condition.type || 'answer'}
+                                                                        onChange={(e) => {
+                                                                            const currentMetadata = step.metadata || {};
+                                                                            const currentRules = (currentMetadata as any).rules || [];
+                                                                            const newRules = [...currentRules];
+                                                                            newRules[ruleIndex] = {
+                                                                                ...newRules[ruleIndex],
+                                                                                conditions: newRules[ruleIndex].conditions.map((c: any, i: number) => 
+                                                                                    i === condIndex ? { ...c, type: e.target.value, source: '', value: '' } : c
+                                                                                ),
+                                                                            };
+                                                                            setStep({
+                                                                                ...step,
+                                                                                metadata: { ...currentMetadata, rules: newRules },
+                                                                            });
+                                                                        }}
+                                                                        className="px-2 py-1 border rounded text-sm"
+                                                                    >
+                                                                        <option value="answer">Resposta</option>
+                                                                        <option value="variable">Variável</option>
+                                                                    </select>
+                                                                    {condition.type === 'answer' ? (
+                                                                        <select
+                                                                            value={condition.source || ''}
+                                                                            onChange={(e) => {
+                                                                                const currentMetadata = step.metadata || {};
+                                                                                const currentRules = (currentMetadata as any).rules || [];
+                                                                                const newRules = [...currentRules];
+                                                                                newRules[ruleIndex] = {
+                                                                                    ...newRules[ruleIndex],
+                                                                                    conditions: newRules[ruleIndex].conditions.map((c: any, i: number) => 
+                                                                                        i === condIndex ? { ...c, source: e.target.value, value: '' } : c
+                                                                                    ),
+                                                                                };
+                                                                                setStep({
+                                                                                    ...step,
+                                                                                    metadata: { ...currentMetadata, rules: newRules },
+                                                                                });
+                                                                            }}
+                                                                            className="flex-1 px-2 py-1 border rounded text-sm"
+                                                                        >
+                                                                            <option value="">Selecione um step</option>
+                                                                            {/* Step atual */}
+                                                                            {step && (
+                                                                                <option key={step.id} value={step.id}>
+                                                                                    {step.title} ({step.type}) - Este step
+                                                                                </option>
+                                                                            )}
+                                                                            {/* Outros steps */}
+                                                                            {quizSteps
+                                                                                .filter(s => s.id !== step.id)
+                                                                                .map(s => (
+                                                                                    <option key={s.id} value={s.id}>
+                                                                                        {s.title} ({s.type})
+                                                                                    </option>
+                                                                                ))}
+                                                                        </select>
+                                                                    ) : (
+                                                                        <Input
+                                                                            placeholder={conditionVariablePlaceholder.placeholder}
+                                                                            value={condition.source || ''}
+                                                                            onFocus={conditionVariablePlaceholder.onFocus}
+                                                                            onBlur={conditionVariablePlaceholder.onBlur}
+                                                                            onChange={(e) => {
+                                                                                const currentMetadata = step.metadata || {};
+                                                                                const currentRules = (currentMetadata as any).rules || [];
+                                                                                const newRules = [...currentRules];
+                                                                                newRules[ruleIndex] = {
+                                                                                    ...newRules[ruleIndex],
+                                                                                    conditions: newRules[ruleIndex].conditions.map((c: any, i: number) => 
+                                                                                        i === condIndex ? { ...c, source: e.target.value } : c
+                                                                                    ),
+                                                                                };
+                                                                                setStep({
+                                                                                    ...step,
+                                                                                    metadata: { ...currentMetadata, rules: newRules },
+                                                                                });
+                                                                            }}
+                                                                            className="flex-1 text-sm"
+                                                                        />
+                                                                    )}
+                                                                    <select
+                                                                        value={condition.operator || '=='}
+                                                                        onChange={(e) => {
+                                                                            const currentMetadata = step.metadata || {};
+                                                                            const currentRules = (currentMetadata as any).rules || [];
+                                                                            const newRules = [...currentRules];
+                                                                            newRules[ruleIndex] = {
+                                                                                ...newRules[ruleIndex],
+                                                                                conditions: newRules[ruleIndex].conditions.map((c: any, i: number) => 
+                                                                                    i === condIndex ? { ...c, operator: e.target.value } : c
+                                                                                ),
+                                                                            };
+                                                                            setStep({
+                                                                                ...step,
+                                                                                metadata: { ...currentMetadata, rules: newRules },
+                                                                            });
+                                                                        }}
+                                                                        className="px-2 py-1 border rounded text-sm"
+                                                                    >
+                                                                        <option value="==">=</option>
+                                                                        <option value="!=">≠</option>
+                                                                        <option value=">">&gt;</option>
+                                                                        <option value="<">&lt;</option>
+                                                                        <option value=">=">≥</option>
+                                                                        <option value="<=">≤</option>
+                                                                        <option value="in">contém</option>
+                                                                        <option value="notIn">não contém</option>
+                                                                    </select>
+                                                                    {shouldShowValueDropdown ? (
+                                                                        <select
+                                                                            value={typeof condition.value === 'string' ? condition.value : ''}
+                                                                            onChange={(e) => {
+                                                                                const currentMetadata = step.metadata || {};
+                                                                                const currentRules = (currentMetadata as any).rules || [];
+                                                                                const newRules = [...currentRules];
+                                                                                newRules[ruleIndex] = {
+                                                                                    ...newRules[ruleIndex],
+                                                                                    conditions: newRules[ruleIndex].conditions.map((c: any, i: number) => 
+                                                                                        i === condIndex ? { ...c, value: e.target.value } : c
+                                                                                    ),
+                                                                                };
+                                                                                setStep({
+                                                                                    ...step,
+                                                                                    metadata: { ...currentMetadata, rules: newRules },
+                                                                                });
+                                                                            }}
+                                                                            className="flex-1 px-2 py-1 border rounded text-sm"
+                                                                        >
+                                                                            <option value="">Selecione um valor</option>
+                                                                            {sourceStep?.question?.options?.map((opt: any) => (
+                                                                                <option key={opt.value} value={opt.value}>
+                                                                                    {opt.text} ({opt.value})
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                    ) : (
+                                                                        <Input
+                                                                            placeholder={conditionValuePlaceholder.placeholder}
+                                                                            value={typeof condition.value === 'string' ? condition.value : JSON.stringify(condition.value)}
+                                                                            onFocus={conditionValuePlaceholder.onFocus}
+                                                                            onBlur={conditionValuePlaceholder.onBlur}
+                                                                            onChange={(e) => {
+                                                                                const currentMetadata = step.metadata || {};
+                                                                                const currentRules = (currentMetadata as any).rules || [];
+                                                                                const newRules = [...currentRules];
+                                                                                let parsedValue: any = e.target.value;
+                                                                                try {
+                                                                                    parsedValue = JSON.parse(e.target.value);
+                                                                                } catch {
+                                                                                    // Manter como string
+                                                                                }
+                                                                                newRules[ruleIndex] = {
+                                                                                    ...newRules[ruleIndex],
+                                                                                    conditions: newRules[ruleIndex].conditions.map((c: any, i: number) => 
+                                                                                        i === condIndex ? { ...c, value: parsedValue } : c
+                                                                                    ),
+                                                                                };
+                                                                                setStep({
+                                                                                    ...step,
+                                                                                    metadata: { ...currentMetadata, rules: newRules },
+                                                                                });
+                                                                            }}
+                                                                            className="flex-1 text-sm"
+                                                                        />
+                                                                    )}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const currentMetadata = step.metadata || {};
+                                                                            const currentRules = (currentMetadata as any).rules || [];
+                                                                            const newRules = [...currentRules];
+                                                                            newRules[ruleIndex] = {
+                                                                                ...newRules[ruleIndex],
+                                                                                conditions: newRules[ruleIndex].conditions.filter((c: any, i: number) => i !== condIndex),
+                                                                            };
+                                                                            setStep({
+                                                                                ...step,
+                                                                                metadata: { ...currentMetadata, rules: newRules },
+                                                                            });
+                                                                        }}
+                                                                        className="text-red-600 hover:text-red-800"
+                                                                    >
+                                                                        <X className="h-4 w-4" />
+                                                                    </button>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const currentMetadata = step.metadata || {};
+                                                                const currentRules = (currentMetadata as any).rules || [];
+                                                                const newRules = [...currentRules];
+                                                                newRules[ruleIndex] = {
+                                                                    ...newRules[ruleIndex],
+                                                                    conditions: [...(newRules[ruleIndex].conditions || []), {
+                                                                        type: 'answer',
+                                                                        source: '',
+                                                                        operator: '==',
+                                                                        value: '',
+                                                                    }],
+                                                                };
+                                                                setStep({
+                                                                    ...step,
+                                                                    metadata: { ...currentMetadata, rules: newRules },
+                                                                });
+                                                            }}
+                                                            className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                                                        >
+                                                            <Plus className="h-3 w-3" />
+                                                            Adicionar Condição
+                                                        </button>
+                                                    </div>
+                                                    {rule.conditions?.length > 1 && (
+                                                        <div className="mt-2">
+                                                            <label className="text-xs text-gray-600 mr-2">Lógica:</label>
+                                                            <select
+                                                                value={rule.logic || 'AND'}
+                                                                onChange={(e) => {
+                                                                    const currentMetadata = step.metadata || {};
+                                                                    const currentRules = (currentMetadata as any).rules || [];
+                                                                    const newRules = [...currentRules];
+                                                                    newRules[ruleIndex] = { ...newRules[ruleIndex], logic: e.target.value };
+                                                                    setStep({
+                                                                        ...step,
+                                                                        metadata: { ...currentMetadata, rules: newRules },
+                                                                    });
+                                                                }}
+                                                                className="px-2 py-1 border rounded text-sm"
+                                                            >
+                                                                <option value="AND">E (AND)</option>
+                                                                <option value="OR">OU (OR)</option>
+                                                            </select>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                
+                                                {/* Ações */}
+                                                <div>
+                                                    <label className="text-sm font-semibold text-gray-700 mb-2 block">Ações</label>
+                                                    <div className="space-y-2">
+                                                        {rule.actions?.length === 0 && (
+                                                            <p className="text-xs text-gray-500 italic">Nenhuma ação</p>
+                                                        )}
+                                                        {rule.actions?.map((action: any, actionIndex: number) => (
+                                                            <div key={actionIndex} className="flex gap-2 items-start p-2 bg-gray-50 rounded">
+                                                                <select
+                                                                    value={action.type || 'goto'}
+                                                                    onChange={(e) => {
+                                                                        const currentMetadata = step.metadata || {};
+                                                                        const currentRules = (currentMetadata as any).rules || [];
+                                                                        const newRules = [...currentRules];
+                                                                        newRules[ruleIndex] = {
+                                                                            ...newRules[ruleIndex],
+                                                                            actions: newRules[ruleIndex].actions.map((a: any, i: number) => 
+                                                                                i === actionIndex ? { ...a, type: e.target.value, target: undefined, value: undefined } : a
+                                                                            ),
+                                                                        };
+                                                                        setStep({
+                                                                            ...step,
+                                                                            metadata: { ...currentMetadata, rules: newRules },
+                                                                        });
+                                                                    }}
+                                                                    className="px-2 py-1 border rounded text-sm"
+                                                                >
+                                                                    <option value="goto">Ir para Step</option>
+                                                                    <option value="skip">Pular Steps</option>
+                                                                    <option value="score">Pontuação</option>
+                                                                    <option value="setVariable">Definir Variável</option>
+                                                                    <option value="message">Mensagem</option>
+                                                                    <option value="redirect">Redirecionar</option>
+                                                                    <option value="end">Encerrar Quiz</option>
+                                                                </select>
+                                                                {action.type === 'goto' ? (
+                                                                    <select
+                                                                        value={action.target || ''}
+                                                                        onChange={(e) => {
+                                                                            const currentMetadata = step.metadata || {};
+                                                                            const currentRules = (currentMetadata as any).rules || [];
+                                                                            const newRules = [...currentRules];
+                                                                            newRules[ruleIndex] = {
+                                                                                ...newRules[ruleIndex],
+                                                                                actions: newRules[ruleIndex].actions.map((a: any, i: number) => 
+                                                                                    i === actionIndex ? { ...a, target: e.target.value } : a
+                                                                                ),
+                                                                            };
+                                                                            setStep({
+                                                                                ...step,
+                                                                                metadata: { ...currentMetadata, rules: newRules },
+                                                                            });
+                                                                        }}
+                                                                        className="flex-1 px-2 py-1 border rounded text-sm"
+                                                                    >
+                                                                        <option value="">Selecione um step</option>
+                                                                        {quizSteps
+                                                                            .filter(s => s.id !== step.id)
+                                                                            .map(s => (
+                                                                                <option key={s.id} value={s.id}>
+                                                                                    {s.title} ({s.type})
+                                                                                </option>
+                                                                            ))}
+                                                                    </select>
+                                                                ) : action.type === 'skip' ? (
+                                                                    <div className="flex gap-2 flex-1">
+                                                                        <select
+                                                                            value={typeof action.value === 'string' && quizSteps.some(s => s.id === action.value) ? action.value : ''}
+                                                                            onChange={(e) => {
+                                                                                const currentMetadata = step.metadata || {};
+                                                                                const currentRules = (currentMetadata as any).rules || [];
+                                                                                const newRules = [...currentRules];
+                                                                                newRules[ruleIndex] = {
+                                                                                    ...newRules[ruleIndex],
+                                                                                    actions: newRules[ruleIndex].actions.map((a: any, i: number) => 
+                                                                                        i === actionIndex ? { ...a, value: e.target.value } : a
+                                                                                    ),
+                                                                                };
+                                                                                setStep({
+                                                                                    ...step,
+                                                                                    metadata: { ...currentMetadata, rules: newRules },
+                                                                                });
+                                                                            }}
+                                                                            className="flex-1 px-2 py-1 border rounded text-sm"
+                                                                        >
+                                                                            <option value="">Selecione step</option>
+                                                                            {quizSteps
+                                                                                .filter(s => s.id !== step.id)
+                                                                                .map(s => (
+                                                                                    <option key={s.id} value={s.id}>
+                                                                                        {s.title} ({s.type})
+                                                                                    </option>
+                                                                                ))}
+                                                                        </select>
+                                                                        <Input
+                                                                            type="number"
+                                                                            placeholder={actionSkipPlaceholder.placeholder}
+                                                                            value={typeof action.value === 'number' ? action.value : (typeof action.value === 'string' && !quizSteps.some(s => s.id === action.value) ? action.value : '')}
+                                                                            onFocus={actionSkipPlaceholder.onFocus}
+                                                                            onBlur={actionSkipPlaceholder.onBlur}
+                                                                            onChange={(e) => {
+                                                                                const currentMetadata = step.metadata || {};
+                                                                                const currentRules = (currentMetadata as any).rules || [];
+                                                                                const newRules = [...currentRules];
+                                                                                const numValue = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                                                                                newRules[ruleIndex] = {
+                                                                                    ...newRules[ruleIndex],
+                                                                                    actions: newRules[ruleIndex].actions.map((a: any, i: number) => 
+                                                                                        i === actionIndex ? { ...a, value: numValue } : a
+                                                                                    ),
+                                                                                };
+                                                                                setStep({
+                                                                                    ...step,
+                                                                                    metadata: { ...currentMetadata, rules: newRules },
+                                                                                });
+                                                                            }}
+                                                                            className="flex-1 text-sm"
+                                                                        />
+                                                                    </div>
+                                                                ) : action.type === 'setVariable' ? (
+                                                                    <>
+                                                                        <Input
+                                                                            placeholder={actionVariableNamePlaceholder.placeholder}
+                                                                            value={action.target || ''}
+                                                                            onFocus={actionVariableNamePlaceholder.onFocus}
+                                                                            onBlur={actionVariableNamePlaceholder.onBlur}
+                                                                            onChange={(e) => {
+                                                                                const currentMetadata = step.metadata || {};
+                                                                                const currentRules = (currentMetadata as any).rules || [];
+                                                                                const newRules = [...currentRules];
+                                                                                newRules[ruleIndex] = {
+                                                                                    ...newRules[ruleIndex],
+                                                                                    actions: newRules[ruleIndex].actions.map((a: any, i: number) => 
+                                                                                        i === actionIndex ? { ...a, target: e.target.value } : a
+                                                                                    ),
+                                                                                };
+                                                                                setStep({
+                                                                                    ...step,
+                                                                                    metadata: { ...currentMetadata, rules: newRules },
+                                                                                });
+                                                                            }}
+                                                                            className="flex-1 text-sm"
+                                                                        />
+                                                                        <Input
+                                                                            placeholder={actionVariableValuePlaceholder.placeholder}
+                                                                            value={typeof action.value === 'string' || typeof action.value === 'number' ? action.value : ''}
+                                                                            onFocus={actionVariableValuePlaceholder.onFocus}
+                                                                            onBlur={actionVariableValuePlaceholder.onBlur}
+                                                                            onChange={(e) => {
+                                                                                const currentMetadata = step.metadata || {};
+                                                                                const currentRules = (currentMetadata as any).rules || [];
+                                                                                const newRules = [...currentRules];
+                                                                                newRules[ruleIndex] = {
+                                                                                    ...newRules[ruleIndex],
+                                                                                    actions: newRules[ruleIndex].actions.map((a: any, i: number) => 
+                                                                                        i === actionIndex ? { ...a, value: e.target.value } : a
+                                                                                    ),
+                                                                                };
+                                                                                setStep({
+                                                                                    ...step,
+                                                                                    metadata: { ...currentMetadata, rules: newRules },
+                                                                                });
+                                                                            }}
+                                                                            className="flex-1 text-sm"
+                                                                        />
+                                                                    </>
+                                                                ) : (action.type === 'score' || action.type === 'message' || action.type === 'redirect') ? (
+                                                                    <Input
+                                                                        placeholder={
+                                                                            action.type === 'score' ? actionScorePlaceholder.placeholder :
+                                                                            action.type === 'message' ? actionMessagePlaceholder.placeholder :
+                                                                            actionRedirectPlaceholder.placeholder
+                                                                        }
+                                                                        type={action.type === 'score' ? 'number' : 'text'}
+                                                                        value={typeof action.value === 'string' || typeof action.value === 'number' ? action.value : ''}
+                                                                        onFocus={
+                                                                            action.type === 'score' ? actionScorePlaceholder.onFocus :
+                                                                            action.type === 'message' ? actionMessagePlaceholder.onFocus :
+                                                                            actionRedirectPlaceholder.onFocus
+                                                                        }
+                                                                        onBlur={
+                                                                            action.type === 'score' ? actionScorePlaceholder.onBlur :
+                                                                            action.type === 'message' ? actionMessagePlaceholder.onBlur :
+                                                                            actionRedirectPlaceholder.onBlur
+                                                                        }
+                                                                        onChange={(e) => {
+                                                                            const currentMetadata = step.metadata || {};
+                                                                            const currentRules = (currentMetadata as any).rules || [];
+                                                                            const newRules = [...currentRules];
+                                                                            let value: any = e.target.value;
+                                                                            if (action.type === 'score') {
+                                                                                value = parseInt(value) || 0;
+                                                                            }
+                                                                            newRules[ruleIndex] = {
+                                                                                ...newRules[ruleIndex],
+                                                                                actions: newRules[ruleIndex].actions.map((a: any, i: number) => 
+                                                                                    i === actionIndex ? { ...a, value } : a
+                                                                                ),
+                                                                            };
+                                                                            setStep({
+                                                                                ...step,
+                                                                                metadata: { ...currentMetadata, rules: newRules },
+                                                                            });
+                                                                        }}
+                                                                        className="flex-1 text-sm"
+                                                                    />
+                                                                ) : null}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        const currentMetadata = step.metadata || {};
+                                                                        const currentRules = (currentMetadata as any).rules || [];
+                                                                        const newRules = [...currentRules];
+                                                                        newRules[ruleIndex] = {
+                                                                            ...newRules[ruleIndex],
+                                                                            actions: newRules[ruleIndex].actions.filter((a: any, i: number) => i !== actionIndex),
+                                                                        };
+                                                                        setStep({
+                                                                            ...step,
+                                                                            metadata: { ...currentMetadata, rules: newRules },
+                                                                        });
+                                                                    }}
+                                                                    className="text-red-600 hover:text-red-800"
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const currentMetadata = step.metadata || {};
+                                                                const currentRules = (currentMetadata as any).rules || [];
+                                                                const newRules = [...currentRules];
+                                                                newRules[ruleIndex] = {
+                                                                    ...newRules[ruleIndex],
+                                                                    actions: [...(newRules[ruleIndex].actions || []), {
+                                                                        type: 'goto',
+                                                                        target: '',
+                                                                    }],
+                                                                };
+                                                                setStep({
+                                                                    ...step,
+                                                                    metadata: { ...currentMetadata, rules: newRules },
+                                                                });
+                                                            }}
+                                                            className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                                                        >
+                                                            <Plus className="h-3 w-3" />
+                                                            Adicionar Ação
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const currentMetadata = step.metadata || {};
+                                            const currentRules = (currentMetadata as any).rules || [];
+                                            const newRule = {
+                                                id: `rule-${Date.now()}`,
+                                                priority: currentRules.length + 1,
+                                                logic: 'AND' as const,
+                                                conditions: [],
+                                                actions: [],
+                                            };
+                                            setStep({
+                                                ...step,
+                                                metadata: {
+                                                    ...currentMetadata,
+                                                    rules: [...currentRules, newRule],
+                                                },
+                                            });
+                                        }}
+                                        className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center justify-center gap-2"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                        Adicionar Regra
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-gray-700">Regras (JSON)</label>
+                            <textarea
+                                value={JSON.stringify((step.metadata as any)?.rules || [], null, 2)}
+                                onChange={(e) => {
+                                    try {
+                                        const rules = JSON.parse(e.target.value);
+                                        setRulesJsonError(null);
+                                        const currentMetadata = step.metadata || {};
+                                        setStep({
+                                            ...step,
+                                            metadata: {
+                                                ...currentMetadata,
+                                                rules: rules,
+                                            },
+                                        });
+                                    } catch (err: any) {
+                                        setRulesJsonError(err.message || 'JSON inválido');
+                                    }
+                                }}
+                                className={`w-full px-3 py-2 border-2 rounded-lg bg-white font-mono text-sm focus:outline-none focus:border-primary-500 ${rulesJsonError ? 'border-red-300' : 'border-gray-200'}`}
+                                rows={15}
+                                placeholder={rulesJsonPlaceholder.placeholder}
+                                onFocus={rulesJsonPlaceholder.onFocus}
+                                onBlur={rulesJsonPlaceholder.onBlur}
+                            />
+                            {rulesJsonError && (
+                                <p className="text-xs text-red-600">Erro: {rulesJsonError}</p>
+                            )}
+                            <p className="text-xs text-gray-500">
+                                Formato: array de regras. Cada regra tem conditions (array) e actions (array).
+                                Operadores: ==, !=, &gt;, &lt;, &gt;=, &lt;=, in, notIn.
+                                Tipos de ação: goto, skip, score, setVariable, message, redirect, end.
+                            </p>
+                        </div>
+                    )}
+                </div>
             </CardContent>
         </Card>
     );
-}
+});
+
+StepEditor.displayName = "StepEditor";
+
+export default StepEditor;

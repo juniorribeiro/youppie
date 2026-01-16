@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { LogOut, LayoutDashboard, PlusCircle, Settings, BarChart3, User, Users, Code, HelpCircle } from "lucide-react";
+import { LogOut, LayoutDashboard, PlusCircle, Settings, BarChart3, User, Users, HelpCircle } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import { useAuthStore } from "@/store/auth";
 import { Button, Badge } from "@repo/ui";
@@ -95,17 +95,6 @@ export default function DashboardLayout({
                             </div>
                         </Link>
 
-                        <ExpandableMenu
-                            title="Configurações"
-                            icon={<Settings className="h-5 w-5" />}
-                        >
-                            <Link href="/dashboard/settings/pixels">
-                                <div className="flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-primary-50 hover:text-primary-600 rounded-lg transition-all cursor-pointer group text-sm">
-                                    <Code className="h-4 w-4" />
-                                    <span>Pixel/Scripts</span>
-                                </div>
-                            </Link>
-                        </ExpandableMenu>
                     </nav>
 
                     {/* User Info */}

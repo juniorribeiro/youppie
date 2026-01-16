@@ -40,8 +40,8 @@ enum SubscriptionPlan {
   FREE
   BASIC
   PRO
+  PREMIUM
   ENTERPRISE
-  UNLIMITED
 }
 
 enum CaptureMode {
@@ -51,16 +51,22 @@ enum CaptureMode {
 }
 
 model Quiz {
-  id           String      @id @default(uuid())
-  user_id      String
-  slug         String      @unique
-  title        String
-  description  String?
-  language     String      @default("en")
-  capture_mode CaptureMode @default(ANONYMOUS)
-  is_published Boolean     @default(false)
-  auto_advance Boolean     @default(false)
-  created_at   DateTime    @default(now())
+  id                   String      @id @default(uuid())
+  user_id              String
+  slug                 String      @unique
+  title                String
+  description          String?
+  language             String      @default("en")
+  capture_mode         CaptureMode @default(ANONYMOUS)
+  is_published         Boolean     @default(false)
+  auto_advance         Boolean     @default(false)
+  google_analytics_id  String?
+  google_tag_manager_id String?
+  facebook_pixel_id    String?
+  tracking_head        String?
+  tracking_body        String?
+  tracking_footer      String?
+  created_at           DateTime    @default(now())
 
   user         User         @relation(fields: [user_id], references: [id])
   steps        Step[]

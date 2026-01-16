@@ -8,6 +8,15 @@ export class UserOverridesService {
     constructor(private prisma: PrismaService) {}
 
     async create(adminId: string, createOverrideDto: CreateUserOverrideDto) {
+        // Buscar usuário por e-mail
+        const user = await this.prisma.user.findUnique({
+            where: { email: createOverrideDto.user_email },
+        });
+
+        if (!user) {
+            throw new BadRequestException(`Usuário com e-mail ${createOverrideDto.user_email} não encontrado`);
+        }
+
         // Validação: se override_type é PLAN_LIMITS, metadata deve conter o campo plan
         if (createOverrideDto.override_type === 'PLAN_LIMITS') {
             if (!createOverrideDto.metadata || !createOverrideDto.metadata.plan) {
@@ -32,7 +41,7 @@ export class UserOverridesService {
 
         return this.prisma.userOverride.create({
             data: {
-                user_id: createOverrideDto.user_id,
+                user_id: user.id,
                 override_type: createOverrideDto.override_type,
                 expires_at: expiresAt,
                 metadata: metadataJson,

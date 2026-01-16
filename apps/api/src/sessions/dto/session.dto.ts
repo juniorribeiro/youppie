@@ -76,6 +76,8 @@ export class NextStepResponseDto {
     stepId: string;
     stepIndex?: number;
     score?: number;
+    message?: string;
+    redirect?: string;
     actions?: Array<{
         type: string;
         target?: string;

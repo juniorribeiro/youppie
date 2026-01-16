@@ -26,25 +26,26 @@ export class SubscriptionsService {
             {
                 id: SubscriptionPlan.BASIC,
                 name: 'Youppie Basic',
-                quizLimit: 15,
+                quizLimit: 3,
                 priceId: process.env.STRIPE_PRICE_ID_BASIC,
             },
             {
                 id: SubscriptionPlan.PRO,
                 name: 'Youppie Pro',
-                quizLimit: 30,
+                quizLimit: 7,
                 priceId: process.env.STRIPE_PRICE_ID_PRO,
+            },
+            {
+                id: SubscriptionPlan.PREMIUM,
+                name: 'Youppie Premium',
+                quizLimit: 15,
+                priceId: process.env.STRIPE_PRICE_ID_PREMIUM,
             },
             {
                 id: SubscriptionPlan.ENTERPRISE,
                 name: 'Youppie Enterprise',
-                quizLimit: 60,
+                quizLimit: 30,
                 priceId: process.env.STRIPE_PRICE_ID_ENTERPRISE,
-            },
-            {
-                id: SubscriptionPlan.UNLIMITED,
-                name: 'Youppie Ilimitado',
-                quizLimit: null, // Ilimitado - não tem priceId, só via overrides
             },
         ];
 

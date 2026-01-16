@@ -199,7 +199,8 @@ export default function PlansModal({ isOpen, onClose, onSuccess, currentPlan, se
                                 const getRecommendedPlan = () => {
                                     if (currentPlan === "FREE") return "BASIC";
                                     if (currentPlan === "BASIC") return "PRO";
-                                    if (currentPlan === "PRO") return "ENTERPRISE";
+                                    if (currentPlan === "PRO") return "PREMIUM";
+                                    if (currentPlan === "PREMIUM") return "ENTERPRISE";
                                     return null;
                                 };
                                 const recommendedPlan = getRecommendedPlan();
